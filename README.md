@@ -17,5 +17,3 @@ conflicts with that formula. Do not edit the GoReleaser-generated casks by hand.
 [kjanat]: https://github.com/kjanat
 [kjanat/actionlint]: https://github.com/kjanat/actionlint
 [koalaman/shellcheck]: https://github.com/koalaman/shellcheck
-
-<!-- rumdl-disable-file line-length -->
