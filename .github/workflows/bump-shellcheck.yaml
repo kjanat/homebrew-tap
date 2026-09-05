@@ -1,0 +1,57 @@
+name: Bump shellcheck
+
+on:
+  schedule: [cron: "17 6 * * 1"]
+  workflow_dispatch: null
+
+permissions: { contents: write, pull-requests: write }
+
+jobs:
+  bump:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
+
+      - id: release
+        uses: $/.github/actions/release-assets
+        with: { repo: koalaman/shellcheck, filter: '\.tar\.xz$' }
+        env: { GH_TOKEN: "${{ github.token }}" }
+
+      - id: cask
+        uses: $/.github/actions/update-cask
+        with: { cask: Casks/shellcheck.rb, version: "${{ steps.release.outputs.version }}", assets: "${{ steps.release.outputs.assets }}" }
+
+      - if: steps.cask.outputs.changed == 'true'
+        run: |
+          sed -i "s/ShellCheck ${PREVIOUS}/ShellCheck ${VERSION}/" \
+            completions/shellcheck/bash/shellcheck \
+            completions/shellcheck/fish/shellcheck.fish \
+            completions/shellcheck/zsh/_shellcheck \
+            completions/shellcheck/powershell/shellcheck.ps1
+          python3 tools/embed_completions.py shellcheck
+          ruby -c Casks/shellcheck.rb
+          python3 completions/shellcheck/tests/test_bash.py
+        env:
+          PREVIOUS: ${{ steps.cask.outputs.previous-version }}
+          VERSION: ${{ steps.release.outputs.version }}
+
+      - if: steps.cask.outputs.changed == 'true'
+        run: |
+          branch="bump/shellcheck-${VERSION}"
+          if git ls-remote --exit-code --heads origin "${branch}"; then
+            echo "${branch} already exists"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "${branch}"
+          git commit -am "Update shellcheck to ${VERSION}"
+          git push -u origin "${branch}"
+          gh pr create --base master --head "${branch}" \
+            --title "Update shellcheck to ${VERSION}" \
+            --body "https://github.com/koalaman/shellcheck/releases/tag/${TAG}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}

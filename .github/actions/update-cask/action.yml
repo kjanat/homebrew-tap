@@ -1,0 +1,36 @@
+name: Update cask
+description: Rewrites the version stanza and every sha256 stanza of a cask from release asset digests.
+inputs:
+  cask:
+    description: Path to the cask file.
+    required: true
+  version:
+    description: New version.
+    required: true
+  assets:
+    description: JSON array of { name, digest } as produced by the release-assets action.
+    required: true
+outputs:
+  changed:
+    description: true when the file was rewritten.
+    value: ${{ steps.run.outputs.changed }}
+  previous-version:
+    description: Version the cask had before the update.
+    value: ${{ steps.run.outputs.previous-version }}
+runs:
+  using: composite
+  steps:
+    - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+      with:
+        deno-version: v2.x
+    - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
+    - id: run
+      shell: actions-shell deno {0}
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        INPUT_CASK: ${{ inputs.cask }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_ASSETS: ${{ inputs.assets }}
+      run: |
+        const { main } = await import(`file://${Deno.env.get("ACTION_PATH")}/mod.ts`);
+        await main();
