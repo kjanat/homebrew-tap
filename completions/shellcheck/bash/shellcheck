@@ -1,0 +1,172 @@
+# ShellCheck 0.11.0 completion. Source this file; do not execute it.
+# Requires Bash 3.2+; does not require the bash-completion package.
+# vim: set ft=bash:
+
+_shellcheck_load_checks() {
+    local exe output line name
+    exe=$(type -P -- "${1:-shellcheck}") || { _shellcheck_checks=(); _shellcheck_checks_exe=; return 0; }
+    if [[ ${_shellcheck_checks_exe-} == "$exe" ]]; then return 0; fi
+    _shellcheck_checks=()
+    if output=$(LC_ALL=C SHELLCHECK_OPTS='' "$exe" --norc --list-optional 2>/dev/null); then
+        while IFS= read -r line; do
+            case $line in
+                name:*)
+                    read -r _ name <<< "$line"
+                    [[ -n $name ]] && _shellcheck_checks+=("$name")
+                    ;;
+            esac
+        done <<< "$output"
+        _shellcheck_checks_exe=$exe
+    fi
+    return 0
+}
+
+_shellcheck_emit() {
+    # Readline replaces only the fragment after a word break such as '=' or ':'.
+    local candidate=$1
+    if [[ -n $sc_trim && $candidate == "$sc_trim"* ]]; then
+        candidate=${candidate#"$sc_trim"}
+    fi
+    COMPREPLY+=("$candidate")
+}
+
+_shellcheck_files() {
+    local mode=$1 value=$2 prefix=$3 lookup path home_prefix=
+    lookup=$value
+    case $lookup in
+        \~/*) lookup=$HOME/${lookup#\~/}; home_prefix=1 ;;
+    esac
+    while IFS= read -r path; do
+        [[ -d $path ]] && path=${path%/}/
+        [[ -n $home_prefix ]] && path=\~/${path#"$HOME"/}
+        _shellcheck_emit "$prefix$path"
+    done < <(compgen "$mode" -- "$lookup")
+}
+
+_shellcheck_complete() {
+    local -a sc_words=() choices=()
+    local sc_trim='' cur word previous='' option='' value='' prefix='' head='' rest char
+    local i j=0 n ended=0 candidate fragment=${2-}
+    COMPREPLY=()
+    # compopt is not available in macOS's system Bash 3.2.
+    if type compopt &>/dev/null; then compopt +o nospace 2>/dev/null || :; fi
+
+    # Reassemble ':' and '=' fragments split by Bash's default COMP_WORDBREAKS.
+    # Never eval the command line or any filename.
+    for ((i=0; i<=COMP_CWORD; i++)); do
+        word=${COMP_WORDS[i]}
+        # Bash passes $2 without surrounding quotes. Use that form so a quoted
+        # --rcfile value does not accidentally retain the --rcfile= prefix twice.
+        if ((i == COMP_CWORD)) && [[ $word == *[\'\"]* ]]; then
+            word=$fragment
+        fi
+        if ((j > 0)) && { [[ $word == = || $word == : ]] ||
+            [[ $previous == = || $previous == : ]]; }; then
+            sc_words[j-1]=${sc_words[j-1]}$word
+        else
+            sc_words[j]=$word
+            j=$((j+1))
+        fi
+        previous=$word
+    done
+    n=${#sc_words[@]}
+    cur=${sc_words[n-1]}
+    if [[ $cur != "$fragment" && $cur == *"$fragment" ]]; then
+        sc_trim=${cur:0:${#cur}-${#fragment}}
+    fi
+
+    # Only words to the left of the cursor affect argument context.
+    for ((i=1; i<n-1; i++)); do
+        word=${sc_words[i]}
+        if [[ -n $option ]]; then option=; continue; fi
+        case $word in
+            --) ended=1; break ;;
+            --include|--exclude|--extended-analysis|--format|--rcfile|--enable|--source-path|--shell|--severity|--wiki-link-count)
+                option=$word ;;
+            --*) ;;
+            -?*)
+                rest=${word#-}
+                while [[ -n $rest ]]; do
+                    char=${rest:0:1}; rest=${rest:1}
+                    case $char in
+                        i|e|f|o|P|s|S|W)
+                            [[ -z $rest ]] && option=-$char
+                            break ;;
+                        C) break ;; # The optional color value must be attached.
+                        a|V|x) ;;
+                        *) break ;;
+                    esac
+                done ;;
+        esac
+    done
+
+    value=$cur
+    if (( !ended )) && [[ -z $option ]]; then
+        case $cur in
+            --*=*) option=${cur%%=*}; prefix=$option=; value=${cur#*=} ;;
+            --*) ;;
+            -?*)
+                rest=${cur#-}; prefix=-
+                while [[ -n $rest ]]; do
+                    char=${rest:0:1}; rest=${rest:1}; prefix=$prefix$char
+                    case $char in
+                        C|i|e|f|o|P|s|S|W) option=-$char; value=$rest; break ;;
+                        a|V|x) ;;
+                        *) break ;;
+                    esac
+                done
+                [[ -n $option ]] || prefix= ;;
+        esac
+    fi
+
+    if ((ended)); then
+        _shellcheck_files -f "$cur" ''
+        [[ - == "$cur"* ]] && _shellcheck_emit -
+        return 0
+    fi
+
+    case $option in
+        -C|--color) choices=(auto always never) ;;
+        --extended-analysis) choices=(true false) ;;
+        -f|--format) choices=(checkstyle diff gcc json json1 quiet tty) ;;
+        -s|--shell) choices=(sh bash dash ksh busybox) ;;
+        -S|--severity) choices=(error warning info style) ;;
+        -o|--enable)
+            _shellcheck_load_checks "${sc_words[0]}"
+            choices=(all "${_shellcheck_checks[@]}")
+            if [[ $value == *,* ]]; then head=${value%,*},; value=${value##*,}; fi
+            if type compopt &>/dev/null; then compopt -o nospace 2>/dev/null || :; fi
+            ;;
+        -P|--source-path)
+            if [[ $value == *:* ]]; then head=${value%:*}:; value=${value##*:}; fi
+            _shellcheck_files -d "$value" "$prefix$head"
+            [[ SCRIPTDIR == "$value"* ]] && _shellcheck_emit "${prefix}${head}SCRIPTDIR"
+            if type compopt &>/dev/null; then compopt -o nospace 2>/dev/null || :; fi
+            return 0 ;;
+        --rcfile) _shellcheck_files -f "$value" "$prefix"; return 0 ;;
+        -i|--include|-e|--exclude|-W|--wiki-link-count)
+            # Free-form values: do not invent a partial warning-code catalogue.
+            return 0 ;;
+        '')
+            if [[ $cur == -* ]]; then
+                choices=(-a --check-sourced -C --color --color=auto --color=always --color=never
+                    -i --include -e --exclude --extended-analysis -f --format
+                    --list-optional --norc --rcfile -o --enable -P --source-path
+                    -s --shell -S --severity -V --version -W --wiki-link-count
+                    -x --external-sources --help -- -)
+            else
+                _shellcheck_files -f "$cur" ''
+                [[ -z $cur ]] && _shellcheck_emit -
+                return 0
+            fi ;;
+        *) return 0 ;;
+    esac
+    for candidate in "${choices[@]}"; do
+        [[ $candidate == "$value"* ]] || continue
+        if [[ -n $head && ,$head == *,$candidate,* ]]; then continue; fi
+        _shellcheck_emit "$prefix$head$candidate"
+    done
+    return 0
+}
+
+complete -o filenames -F _shellcheck_complete shellcheck

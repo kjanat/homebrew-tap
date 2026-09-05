@@ -1,0 +1,53 @@
+#compdef shellcheck
+# ShellCheck 0.11.0. Put this file on fpath and run compinit.
+# vim: set ft=zsh:
+
+_shellcheck_optional_checks() {
+    local exe output line
+    local -a fields
+    exe=$(whence -p -- "$words[1]") || exe=shellcheck
+    if [[ ${_shellcheck_checks_exe-} != "$exe" ]]; then
+        typeset -ga _shellcheck_check_names=()
+        if output=$(LC_ALL=C SHELLCHECK_OPTS= "$exe" --norc --list-optional 2>/dev/null); then
+            for line in "${(@f)output}"; do
+                fields=( ${=line} )
+                if [[ $fields[1] == name: && -n $fields[2] ]]; then
+                    _shellcheck_check_names+=( "$fields[2]" )
+                fi
+            done
+            typeset -g _shellcheck_checks_exe=$exe
+        fi
+    fi
+    _values -s , 'optional check' all "${_shellcheck_check_names[@]}"
+}
+
+_shellcheck_source_paths() {
+    _sequence -s : _alternative \
+        'special-paths:special source directory:compadd -- SCRIPTDIR' \
+        'directories:source directory:_files -/'
+}
+
+_shellcheck_input_files() {
+    _alternative 'files:input file:_files' 'stdin:standard input:compadd -- -'
+}
+
+_arguments -s -S \
+    '(-a --check-sourced)'{-a,--check-sourced}'[Include warnings from sourced files]' \
+    '-C-[Use color]::color:(auto always never)' \
+    '--color=-[Use color]::color:(auto always never)' \
+    '*'{-i+,--include=}'[Consider only specified warnings]:comma-separated warning codes (e.g. SC2086,SC2046): ' \
+    '*'{-e+,--exclude=}'[Exclude specified warnings]:comma-separated warning codes (e.g. SC2086,SC2046): ' \
+    '--extended-analysis=[Enable or disable dataflow analysis]:boolean:(true false)' \
+    '(-f --format)'{-f+,--format=}'[Select output format]:format:(checkstyle diff gcc json json1 quiet tty)' \
+    '--list-optional[List checks disabled by default]' \
+    '--norc[Do not search for .shellcheckrc files]' \
+    '--rcfile=[Use the specified configuration file]:configuration file:_files' \
+    '*'{-o+,--enable=}'[Enable optional checks]:optional checks:_shellcheck_optional_checks' \
+    '*'{-P+,--source-path=}'[Set search paths for sourced files]:source paths:_shellcheck_source_paths' \
+    '(-s --shell)'{-s+,--shell=}'[Select shell dialect]:shell:(sh bash dash ksh busybox)' \
+    '(-S --severity)'{-S+,--severity=}'[Set minimum diagnostic severity]:severity:(error warning info style)' \
+    '(-V --version)'{-V,--version}'[Print version information]' \
+    '(-W --wiki-link-count)'{-W+,--wiki-link-count=}'[Set number of wiki links]:number of wiki links: ' \
+    '(-x --external-sources)'{-x,--external-sources}'[Allow sourcing files outside the input files]' \
+    '--help[Show usage information]' \
+    '*:input file:_shellcheck_input_files'
