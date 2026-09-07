@@ -21,6 +21,7 @@ runs:
     - { uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed, with: { deno-version: v2.x } } # v2
     - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
     - id: run
+      name: Read release assets
       shell: actions-shell deno {0}
       env:
         GH_TOKEN: ${{ inputs.token }}
