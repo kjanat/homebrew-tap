@@ -1,0 +1,63 @@
+name: Commit and open a pull request
+description: Commits the working tree to a new branch, pushes it, and opens a pull request. Skips when the branch already exists on origin.
+
+inputs:
+  branch: { description: Branch to create., required: true }
+  title: { description: Pull request title., required: true }
+  message: { description: Commit message. Defaults to the title., required: false, default: "" }
+  body: { description: Pull request body., required: false, default: "" }
+  base: { description: Base branch., required: false, default: "${{ github.event.repository.default_branch }}" }
+  author-name: { description: Commit author name., required: false, default: "github-actions[bot]" }
+  author-email: { description: Commit author email., required: false, default: "41898282+github-actions[bot]@users.noreply.github.com" }
+  token: { description: Token for pushing and for gh., required: false, default: "${{ github.token }}" }
+
+outputs:
+  result: { description: "created, or exists when the branch was already on origin.", value: "${{ steps.run.outputs.result }}" }
+  url: { description: Pull request URL when created., value: "${{ steps.run.outputs.url }}" }
+
+runs:
+  using: composite
+  steps:
+    - { uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed, with: { deno-version: v2.x } } # v2
+    - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
+    - id: run
+      shell: actions-shell deno {0}
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        INPUT_BRANCH: ${{ inputs.branch }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_MESSAGE: ${{ inputs.message }}
+        INPUT_BODY: ${{ inputs.body }}
+        INPUT_BASE: ${{ inputs.base }}
+        GIT_AUTHOR_NAME: ${{ inputs.author-name }}
+        GIT_AUTHOR_EMAIL: ${{ inputs.author-email }}
+        GIT_COMMITTER_NAME: ${{ inputs.author-name }}
+        GIT_COMMITTER_EMAIL: ${{ inputs.author-email }}
+      run: |
+        import { input, remoteBranchExists, run, setOutput } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
+
+        const branch = input('branch', { required: true });
+        const title = input('title', { required: true });
+        const message = input('message') || title;
+        const body = input('body');
+        const base = input('base', { required: true });
+        const token = Deno.env.get('GH_TOKEN') ?? '';
+
+        if (await remoteBranchExists(branch)) {
+          await setOutput('result', 'exists');
+          await setOutput('url', '');
+        } else {
+          await run('git', ['switch', '-c', branch]);
+          await run('git', ['commit', '-a', '-m', message]);
+          await run('git', ['push', '-u', 'origin', branch], {
+            GIT_CONFIG_COUNT: '2',
+            GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+            GIT_CONFIG_VALUE_0: '',
+            GIT_CONFIG_KEY_1: 'http.https://github.com/.extraheader',
+            GIT_CONFIG_VALUE_1: `AUTHORIZATION: basic ${btoa(`x-access-token:${token}`)}`,
+          });
+          const url = await run('gh', ['pr', 'create', '--base', base, '--head', branch, '--title', title, '--body', body]);
+
+          await setOutput('result', 'created');
+          await setOutput('url', url);
+        }

@@ -1,46 +1,36 @@
 name: Release assets
 description: Reads a GitHub release through gh and exposes its tag, version, and asset digests as JSON.
+
 inputs:
-  repo:
-    description: Repository in OWNER/NAME form.
-    required: true
-  tag:
-    description: Release tag. Defaults to the latest release.
-    required: false
-    default: ""
-  filter:
-    description: Regular expression an asset name must match to be included.
-    required: false
-    default: ""
-  token:
-    description: Token gh authenticates with.
-    required: false
-    default: ${{ github.token }}
+  repo: { description: Repository in OWNER/NAME form., required: true }
+  tag: { description: Release tag. Defaults to the latest release., required: false, default: "" }
+  filter: { description: Regular expression an asset name must match., required: false, default: "" }
+  token: { description: Token gh authenticates with., required: false, default: "${{ github.token }}" }
+
 outputs:
-  tag:
-    description: Release tag name.
-    value: ${{ steps.run.outputs.tag }}
-  version:
-    description: Tag name without a leading v.
-    value: ${{ steps.run.outputs.version }}
+  tag: { description: Release tag name., value: "${{ steps.run.outputs.tag }}" }
+  version: { description: Tag name without a leading v., value: "${{ steps.run.outputs.version }}" }
   assets:
-    description: JSON array of { name, url, digest, size }. digest is null when GitHub recorded none.
-    value: ${{ steps.run.outputs.assets }}
+    description: >-
+      JSON array of { name, url, digest, size }. digest is null when GitHub recorded none.
+    value: "${{ steps.run.outputs.assets }}"
+
 runs:
   using: composite
   steps:
-    - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
-      with:
-        deno-version: v2.x
+    - { uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed, with: { deno-version: v2.x } } # v2
     - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
     - id: run
       shell: actions-shell deno {0}
       env:
-        ACTION_PATH: ${{ github.action_path }}
         GH_TOKEN: ${{ inputs.token }}
         INPUT_REPO: ${{ inputs.repo }}
         INPUT_TAG: ${{ inputs.tag }}
         INPUT_FILTER: ${{ inputs.filter }}
       run: |
-        const { main } = await import(`file://${Deno.env.get("ACTION_PATH")}/mod.ts`);
-        await main();
+        import { input, selectAssets, setOutput, viewRelease } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
+
+        const release = await viewRelease(input('repo', { required: true }), input('tag'));
+        await setOutput('tag', release.tagName);
+        await setOutput('version', release.tagName.replace(/^v/, ''));
+        await setOutput('assets', selectAssets(release.assets, input('filter')));

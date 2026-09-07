@@ -1,0 +1,45 @@
+name: Bump shellcheck
+
+on:
+  schedule: [{ cron: "17 6 * * 1" }]
+  workflow_dispatch:
+
+permissions: { contents: write, pull-requests: write }
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - id: release
+        uses: $/.github/actions/release-assets
+        with: { repo: koalaman/shellcheck, filter: '\.tar\.xz$' }
+
+      - id: cask
+        uses: $/.github/actions/update-cask
+        with: { cask: Casks/shellcheck.rb, version: "${{ steps.release.outputs.version }}", assets: "${{ steps.release.outputs.assets }}" }
+
+      - if: steps.cask.outputs.changed == 'true'
+        uses: $/.github/actions/replace-in-files
+        with:
+          search: ShellCheck ${{ steps.cask.outputs.previous-version }}
+          replace: ShellCheck ${{ steps.release.outputs.version }}
+          files: |
+            completions/shellcheck/bash/shellcheck
+            completions/shellcheck/fish/shellcheck.fish
+            completions/shellcheck/zsh/_shellcheck
+            completions/shellcheck/powershell/shellcheck.ps1
+
+      - if: steps.cask.outputs.changed == 'true'
+        run: |
+          python3 tools/embed_completions.py shellcheck
+          ruby -c Casks/shellcheck.rb
+          python3 completions/shellcheck/tests/test_bash.py
+
+      - if: steps.cask.outputs.changed == 'true'
+        uses: $/.github/actions/commit-and-pr
+        with:
+          branch: bump/shellcheck-${{ steps.release.outputs.version }}
+          title: Update shellcheck to ${{ steps.release.outputs.version }}
+          body: https://github.com/koalaman/shellcheck/releases/tag/${{ steps.release.outputs.tag }}

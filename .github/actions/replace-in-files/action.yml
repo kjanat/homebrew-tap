@@ -1,0 +1,40 @@
+name: Replace in files
+description: Replaces every literal occurrence of a string in the listed files.
+
+inputs:
+  files: { description: Newline-separated file paths., required: true }
+  search: { description: Literal text to find., required: true }
+  replace: { description: Replacement text., required: false, default: "" }
+
+outputs:
+  changed: { description: true when any file was rewritten., value: "${{ steps.run.outputs.changed }}" }
+  replacements: { description: "JSON array of { path, count }.", value: "${{ steps.run.outputs.replacements }}" }
+
+runs:
+  using: composite
+  steps:
+    - { uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed, with: { deno-version: v2.x } } # v2
+    - uses: kjanat/actions-shells@697bb547ef1ce427e202b4cbcdb19886aa587da7 # v0
+    - id: run
+      shell: actions-shell deno {0}
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_SEARCH: ${{ inputs.search }}
+        INPUT_REPLACE: ${{ inputs.replace }}
+      run: |
+        import { input, parseFileList, replaceAll, setOutput, type Replacement } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
+
+        const files = parseFileList(input('files', { required: true }));
+        const search = input('search', { required: true });
+        const replace = input('replace');
+        if (files.length === 0) throw new Error('files must list at least one path');
+
+        const replacements: Replacement[] = [];
+        for (const path of files) {
+          const result = replaceAll(await Deno.readTextFile(path), search, replace);
+          if (result.count > 0) await Deno.writeTextFile(path, result.text);
+          replacements.push({ path, count: result.count });
+        }
+
+        await setOutput('changed', String(replacements.some((r) => r.count > 0)));
+        await setOutput('replacements', replacements);
