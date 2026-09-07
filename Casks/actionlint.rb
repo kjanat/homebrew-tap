@@ -30,9 +30,6 @@ cask "actionlint" do
   livecheck do
     skip "Auto-generated on release."
   end
-  depends_on formula: [
-      "shellcheck",
-    ]
 
   binary "actionlint"
   manpage "man/actionlint.1"
