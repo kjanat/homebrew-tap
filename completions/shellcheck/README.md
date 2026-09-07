@@ -57,9 +57,9 @@ The Bash, Zsh, and Fish source-path lists use `:` and target macOS/Linux. PowerS
 
 ## Use from your Homebrew cask without changing ShellCheck
 
-`homebrew-cask-completions.rb` contains the actual contents of all four scripts in quoted Ruby heredocs. Insert those stanzas into the existing cask block. This uses Homebrew's `generated_script` stanza to create files in the staging directory, followed by the completion/artifact stanzas to install them. There is no need to modify, rebuild, or repackage ShellCheck's upstream archive.
+`Casks/shellcheck.rb` uses a `preflight` block to copy all four files from `cask.tap.path/"completions/shellcheck"` into the staging directory. Homebrew's completion/artifact stanzas then install them. There is no need to modify, rebuild, or repackage ShellCheck's upstream archive.
 
-Keep the `generated_script` declarations with the cask's other generated-script declarations, before binary/artifact declarations. The final installation stanzas are:
+The installation stanzas are:
 
 ```ruby
 bash_completion "shellcheck.bash", target: "shellcheck"
@@ -69,7 +69,7 @@ artifact "shellcheck.ps1",
          target: "#{HOMEBREW_PREFIX}/share/powershell/completions/shellcheck.ps1"
 ```
 
-Those final lines by themselves are NOT sufficient for an upstream archive that lacks the completion files. The included `generated_script` blocks supply the missing files.
+The `preflight` block supplies the completion files missing from the upstream archive before these artifacts are installed.
 
 Homebrew has dedicated artifact types for Bash, Fish, and Zsh, not PowerShell. The generic `artifact` installs the PowerShell script at a stable shared location. Add this line to the PowerShell profile to load it:
 
@@ -79,26 +79,32 @@ Homebrew has dedicated artifact types for Bash, Fish, and Zsh, not PowerShell. T
 
 The cask intentionally does not modify user shell profiles. Bash, Fish, and Zsh still need their usual Homebrew completion directories configured in their shell.
 
-After editing one of the four source files, regenerate the embedded Ruby fragment:
+Edit the four source files directly. Once the updated tap is available locally, reinstall the cask to refresh installed completions:
 
 ```sh
-python3 tools/build_cask_fragment.py
+brew reinstall --cask kjanat/tap/shellcheck
 ```
 
-Python is only used to generate that fragment and run tests. It is not an installation or completion-time dependency. The fragment uses the current documented Homebrew DSL; its installation has not been exercised with Homebrew in this environment.
+Python is only used to run tests. It is not an installation or completion-time dependency.
 
 ## Verification and limitations
 
-Executed in the creation environment:
+Homebrew 6.0.22 on Ubuntu WSL was tested with the local cask and tap files:
+
+- Installation ran ShellCheck 0.11.0 and installed all four completion files byte-for-byte from the tap.
+- Reinstallation picked up changed tap completion files without a ShellCheck version change.
+- All 12 Bash regression test methods passed against the installed completion file.
+- Uninstallation removed the binary and all four completion artifacts.
+
+The original completion creation environment also covered:
 
 - Bash 5.2.37 syntax check.
 - All 12 regression test methods in `tests/test_bash.py`, with multiple argument forms per method, passed. Optional-check discovery uses a controlled mock executable.
 - Eight real interactive Readline scenarios in `tests/test_bash_readline.py` passed, including single-quoted, double-quoted, and backslash-escaped paths with spaces.
-- Ruby syntax check of the generated cask fragment passed.
 
 Bash avoids features newer than Bash 3.2, but Bash 3.2 itself was not available to execute. With Bash 3.2, completion can insert a space after a completed list item; newer Bash uses `compopt` to keep comma/path lists open for continued editing.
 
-PowerShell, Zsh, Fish, ShellCheck itself, and Homebrew were not installed in this environment. Those runtimes have NOT been exercised here. Their implementations were checked against primary documentation/source, not passed off as runtime-tested. Windows and macOS execution are also unverified.
+The Ubuntu installation checks did not exercise interactive PowerShell, Zsh, or Fish completion behavior. Windows and macOS cask installation remain unverified.
 
 The Bash filename helper uses line-delimited `compgen` output, so filenames containing literal newline characters are not supported. Ordinary filenames with spaces are covered by the interactive tests.
 

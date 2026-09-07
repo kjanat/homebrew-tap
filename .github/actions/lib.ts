@@ -32,6 +32,29 @@ export async function remoteBranchExists(branch: string): Promise<boolean> {
 	return output.code === 0;
 }
 
+export async function hasTrackedChanges(): Promise<boolean> {
+	return (await run('git', ['status', '--porcelain', '--untracked-files=no'])) !== '';
+}
+
+export async function ensurePullRequest(
+	branch: string,
+	base: string,
+	title: string,
+	body: string,
+): Promise<{ url: string; created: boolean }> {
+	const existing = await run('gh', /* dprint-ignore */ [
+		'pr', 'list',
+		'--head', branch,
+		'--base', base,
+		'--state', 'open',
+		'--json', 'url',
+		'--jq', '.[0].url // empty',
+	]);
+	if (existing !== '') return { url: existing, created: false };
+	const url = await run('gh', ['pr', 'create', '--base', base, '--head', branch, '--title', title, '--body', body]);
+	return { url, created: true };
+}
+
 export interface Asset {
 	name: string;
 	url: string;
@@ -100,7 +123,7 @@ export interface Update {
 }
 
 const VERSION_STANZA = /^(\s*)version "([^"]+)"$/m;
-const SHA256_URL_PAIR = /^(\s*)sha256 "[0-9a-f]{64}"\n(\s*url "([^"]+)")$/gm;
+const SHA256_URL_PAIR = /^(\s*)sha256 "[0-9a-f]{64}"(\r?\n)(\s*url "([^"]+)")$/gm;
 
 export function parseDigests(value: unknown): Digest[] {
 	if (!Array.isArray(value)) throw new Error('assets must be a JSON array');
@@ -109,7 +132,9 @@ export function parseDigests(value: unknown): Digest[] {
 			throw new Error(`unexpected asset shape: ${JSON.stringify(asset)}`);
 		}
 		if (typeof asset.digest !== 'string') throw new Error(`asset ${asset.name} has no digest`);
-		return { name: asset.name, digest: asset.digest.replace(/^sha256:/, '') };
+		const digest = asset.digest.replace(/^sha256:/, '');
+		if (!/^[0-9a-f]{64}$/.test(digest)) throw new Error(`asset ${asset.name} has an invalid SHA-256 digest`);
+		return { name: asset.name, digest };
 	});
 }
 
@@ -119,18 +144,25 @@ export function updateCask(text: string, version: string, assets: Digest[]): Upd
 	const [stanza, indent, previous] = versionMatch;
 	const digests = new Map(assets.map((asset) => [asset.name, asset.digest]));
 	const missing: string[] = [];
+	const expected = [...text.matchAll(/^[ \t]*sha256 "/gm)].length;
+	let matched = 0;
 
 	let updated = text.replace(stanza, `${indent}version "${version}"`);
-	updated = updated.replace(SHA256_URL_PAIR, (pair, shaIndent: string, urlLine: string, urlTemplate: string) => {
-		const name = urlTemplate.replaceAll('#{version}', version).split('/').at(-1) ?? '';
-		const digest = digests.get(name);
-		if (digest === undefined) {
-			missing.push(name);
-			return pair;
-		}
-		return `${shaIndent}sha256 "${digest}"\n${urlLine}`;
-	});
+	updated = updated.replace(
+		SHA256_URL_PAIR,
+		(pair, shaIndent: string, newline: string, urlLine: string, urlTemplate: string) => {
+			matched++;
+			const name = urlTemplate.replaceAll('#{version}', version).split('/').at(-1) ?? '';
+			const digest = digests.get(name);
+			if (digest === undefined) {
+				missing.push(name);
+				return pair;
+			}
+			return `${shaIndent}sha256 "${digest}"${newline}${urlLine}`;
+		},
+	);
 
 	if (missing.length > 0) throw new Error(`no asset digest for: ${missing.join(', ')}`);
+	if (matched === 0 || matched !== expected) throw new Error('cask has unmatched sha256/url stanzas');
 	return { text: updated, previous: previous ?? '', changed: updated !== text };
 }

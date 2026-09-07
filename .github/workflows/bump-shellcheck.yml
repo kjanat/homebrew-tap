@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 
 permissions: { contents: write, pull-requests: write }
+concurrency: { group: bump-shellcheck, cancel-in-progress: false }
 
 jobs:
   bump:
@@ -31,15 +32,12 @@ jobs:
             completions/shellcheck/zsh/_shellcheck
             completions/shellcheck/powershell/shellcheck.ps1
 
-      - if: steps.cask.outputs.changed == 'true'
-        run: |
-          python3 tools/embed_completions.py shellcheck
+      - run: |
           ruby -c Casks/shellcheck.rb
           python3 completions/shellcheck/tests/test_bash.py
 
-      - if: steps.cask.outputs.changed == 'true'
-        uses: $/.github/actions/commit-and-pr
+      - uses: $/.github/actions/commit-and-pr
         with:
-          branch: bump/shellcheck-${{ steps.release.outputs.version }}
+          branch: bump/shellcheck-${{ steps.release.outputs.version }}-${{ hashFiles('Casks/shellcheck.rb', 'completions/shellcheck/**') }}
           title: Update shellcheck to ${{ steps.release.outputs.version }}
           body: https://github.com/koalaman/shellcheck/releases/tag/${{ steps.release.outputs.tag }}

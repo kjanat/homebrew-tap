@@ -1,6 +1,122 @@
-import { assertEquals, assertMatch, assertNotMatch } from 'jsr:@std/assert@1';
+import { assertEquals, assertMatch, assertNotMatch, assertRejects } from 'jsr:@std/assert@1';
 import { parse } from 'jsr:@std/yaml@1';
-import { isRecord } from './lib.ts';
+import { ensurePullRequest, hasTrackedChanges, isRecord } from './lib.ts';
+
+async function mockCommands(
+	responses: { command: string; args: string[]; output: string; code?: number }[],
+	check: () => Promise<void>,
+) {
+	const original = Deno.Command;
+	Object.defineProperty(Deno, 'Command', {
+		value: class {
+			response: (typeof responses)[number];
+			constructor(command: string, options: Deno.CommandOptions) {
+				const response = responses.shift();
+				if (response === undefined) throw new Error(`unexpected command ${command}`);
+				assertEquals(command, response.command);
+				assertEquals(options.args, response.args);
+				this.response = response;
+			}
+			output() {
+				const code = this.response.code ?? 0;
+				return Promise.resolve({ success: code === 0, code, stdout: new TextEncoder().encode(this.response.output) });
+			}
+		},
+	});
+	try {
+		await check();
+		assertEquals(responses.length, 0);
+	} finally {
+		Object.defineProperty(Deno, 'Command', { value: original });
+	}
+}
+
+Deno.test('PR retry creates the missing PR after a branch has already been pushed', async () => {
+	await mockCommands([
+		{
+			command: 'gh',
+			args: /* dprint-ignore */ [
+				'pr', 'list',
+				'--head', 'bump/tool',
+				'--base', 'master',
+				'--state', 'open',
+				'--json', 'url',
+				'--jq', '.[0].url // empty',
+			],
+			output: '',
+		},
+		{
+			command: 'gh',
+			args: /* dprint-ignore */ [
+				'pr', 'create',
+				'--base', 'master',
+				'--head', 'bump/tool',
+				'--title', 'Update tool',
+				'--body', 'Release notes',
+			],
+			output: 'https://example.invalid/pull/1\n',
+		},
+	], async () =>
+		assertEquals(await ensurePullRequest('bump/tool', 'master', 'Update tool', 'Release notes'), {
+			url: 'https://example.invalid/pull/1',
+			created: true,
+		}));
+});
+
+Deno.test('PR retry returns an existing PR without creating or editing it', async () => {
+	await mockCommands([
+		{
+			command: 'gh',
+			args: /* dprint-ignore */ [
+				'pr', 'list',
+				'--head', 'bump/tool',
+				'--base', 'master',
+				'--state', 'open',
+				'--json', 'url',
+				'--jq', '.[0].url // empty',
+			],
+			output: 'https://example.invalid/pull/1\n',
+		},
+	], async () =>
+		assertEquals(await ensurePullRequest('bump/tool', 'master', 'Update tool', 'Release notes'), {
+			url: 'https://example.invalid/pull/1',
+			created: false,
+		}));
+});
+
+Deno.test('PR lookup failure does not attempt to create a duplicate PR', async () => {
+	await mockCommands([
+		{
+			command: 'gh',
+			args: /* dprint-ignore */ [
+				'pr', 'list',
+				'--head', 'bump/tool',
+				'--base', 'master',
+				'--state', 'open',
+				'--json', 'url',
+				'--jq', '.[0].url // empty',
+			],
+			output: '',
+			code: 1,
+		},
+	], async () => {
+		await assertRejects(
+			() => ensurePullRequest('bump/tool', 'master', 'Update tool', 'Release notes'),
+			Error,
+			'exited with 1',
+		);
+	});
+});
+
+Deno.test('refresh detects completion-only changes and skips a clean checkout', async () => {
+	await mockCommands([
+		{ command: 'git', args: ['status', '--porcelain', '--untracked-files=no'], output: '' },
+		{ command: 'git', args: ['status', '--porcelain', '--untracked-files=no'], output: ' M Casks/shellcheck.rb\n' },
+	], async () => {
+		assertEquals(await hasTrackedChanges(), false);
+		assertEquals(await hasTrackedChanges(), true);
+	});
+});
 
 function runStep(metadata: unknown): string | undefined {
 	if (!isRecord(metadata) || !isRecord(metadata.runs) || !Array.isArray(metadata.runs.steps)) return undefined;
@@ -96,6 +212,29 @@ Deno.test('update-cask leaves a current cask unchanged', async () => {
 	);
 	assertEquals(result.success, true, result.stderr);
 	assertEquals(result.outputs.changed, 'false');
+	assertEquals(result.files['cask.rb'], cask);
+});
+
+Deno.test('update-cask updates every digest while preserving CRLF line endings', async () => {
+	const result = await update(assets, cask.replaceAll('\n', '\r\n'));
+	assertEquals(result.success, true, result.stderr);
+	assertMatch(result.files['cask.rb'], new RegExp(`sha256 "${'c'.repeat(64)}"\\r\\n`));
+	assertMatch(result.files['cask.rb'], new RegExp(`sha256 "${'d'.repeat(64)}"\\r\\n`));
+	assertEquals(result.files['cask.rb'].replaceAll('\r\n', '').includes('\n'), false);
+});
+
+Deno.test('update-cask refuses to change the version when a checksum stanza is unmatched', async () => {
+	const text = cask.replace('    url', '    # intervening comment\n    url');
+	const result = await update(assets, text);
+	assertEquals(result.success, false);
+	assertMatch(result.stderr, /cask has unmatched sha256\/url stanzas/);
+	assertEquals(result.files['cask.rb'], text);
+});
+
+Deno.test('update-cask rejects malformed SHA-256 digests without writing', async () => {
+	const result = await update([{ ...assets[0], digest: 'sha256:invalid' }, assets[1]]);
+	assertEquals(result.success, false);
+	assertMatch(result.stderr, /invalid SHA-256 digest/);
 	assertEquals(result.files['cask.rb'], cask);
 });
 

@@ -1,5 +1,5 @@
 name: Commit and open a pull request
-description: Commits the working tree to a new branch, pushes it, and opens a pull request. Skips when the branch already exists on origin.
+description: Commits tracked changes to a branch and opens a pull request. Reuses existing branches and pull requests, and retries missing pull requests.
 
 inputs:
   branch: { description: Branch to create., required: true }
@@ -12,8 +12,8 @@ inputs:
   token: { description: Token for pushing and for gh., required: false, default: "${{ github.token }}" }
 
 outputs:
-  result: { description: "created, or exists when the branch was already on origin.", value: "${{ steps.run.outputs.result }}" }
-  url: { description: Pull request URL when created., value: "${{ steps.run.outputs.url }}" }
+  result: { description: "created, exists, or unchanged when there are no tracked changes.", value: "${{ steps.run.outputs.result }}" }
+  url: { description: Created or existing pull request URL., value: "${{ steps.run.outputs.url }}" }
 
 runs:
   using: composite
@@ -34,7 +34,7 @@ runs:
         GIT_COMMITTER_NAME: ${{ inputs.author-name }}
         GIT_COMMITTER_EMAIL: ${{ inputs.author-email }}
       run: |
-        import { input, remoteBranchExists, run, setOutput } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
+        import { ensurePullRequest, hasTrackedChanges, input, remoteBranchExists, run, setOutput } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
 
         const branch = input('branch', { required: true });
         const title = input('title', { required: true });
@@ -43,21 +43,23 @@ runs:
         const base = input('base', { required: true });
         const token = Deno.env.get('GH_TOKEN') ?? '';
 
-        if (await remoteBranchExists(branch)) {
-          await setOutput('result', 'exists');
+        if (!(await hasTrackedChanges())) {
+          await setOutput('result', 'unchanged');
           await setOutput('url', '');
         } else {
-          await run('git', ['switch', '-c', branch]);
-          await run('git', ['commit', '-a', '-m', message]);
-          await run('git', ['push', '-u', 'origin', branch], {
-            GIT_CONFIG_COUNT: '2',
-            GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
-            GIT_CONFIG_VALUE_0: '',
-            GIT_CONFIG_KEY_1: 'http.https://github.com/.extraheader',
-            GIT_CONFIG_VALUE_1: `AUTHORIZATION: basic ${btoa(`x-access-token:${token}`)}`,
-          });
-          const url = await run('gh', ['pr', 'create', '--base', base, '--head', branch, '--title', title, '--body', body]);
+          if (!(await remoteBranchExists(branch))) {
+            await run('git', ['switch', '-c', branch]);
+            await run('git', ['commit', '-a', '-m', message]);
+            await run('git', ['push', '-u', 'origin', branch], {
+              GIT_CONFIG_COUNT: '2',
+              GIT_CONFIG_KEY_0: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_0: '',
+              GIT_CONFIG_KEY_1: 'http.https://github.com/.extraheader',
+              GIT_CONFIG_VALUE_1: `AUTHORIZATION: basic ${btoa(`x-access-token:${token}`)}`,
+            });
+          }
+          const pr = await ensurePullRequest(branch, base, title, body);
 
-          await setOutput('result', 'created');
-          await setOutput('url', url);
+          await setOutput('result', pr.created ? 'created' : 'exists');
+          await setOutput('url', pr.url);
         }
