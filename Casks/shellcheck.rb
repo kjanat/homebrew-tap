@@ -47,6 +47,9 @@ cask "shellcheck" do
   end
 
   caveats <<~EOS
+    Usual bash, zsh, and fish completions are installed to
+			#{HOMEBREW_PREFIX}/share/{bash,zsh,fish}/completions/shellcheck.{bash,fish,_shellcheck}
+			and setup automatically by Homebrew.
     PowerShell completion is installed to
       #{HOMEBREW_PREFIX}/share/powershell/completions/shellcheck.ps1
     Load it from your PowerShell profile:
