@@ -38,7 +38,7 @@ cask "actionlint" do
   binary "actionlint"
   manpage "man/actionlint.1"
 
-  postflight do
+  preflight do
     if OS.mac?
       system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/actionlint"]
     end
