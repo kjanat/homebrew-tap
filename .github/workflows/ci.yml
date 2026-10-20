@@ -1,0 +1,31 @@
+name: Workflow checks
+on:
+  push:
+    branches: [master]
+    paths: [.github/workflows/**]
+  pull_request:
+    paths: [.github/workflows/**]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: kjanat/actionlint
+          ref: 6e394c888293218fac952ba8a8681739b0c4c2c3
+          path: .lint-host
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: .lint-host/go.mod
+          cache-dependency-path: .lint-host/go.sum
+      - name: Build the pinned workflow validator
+        working-directory: .lint-host
+        run: go build -o ../actionlint-verifier ./cmd/actionlint
+      - name: Validate workflow syntax and references
+        run: ./actionlint-verifier check --no-config --no-shellcheck --no-ruff .github/workflows/*.yml
