@@ -1,0 +1,30 @@
+name: Publish verified release manifest
+run-name: Beepboop ${{ inputs.operation_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository_id: { description: Immutable source repository ID, required: true, type: string }
+      release_id: { description: Published upstream release ID, required: true, type: string }
+      source_sha: { description: Exact upstream tagged commit, required: true, type: string }
+      operation_id: { description: Beepboop operation identity, required: true, type: string }
+      dry_run: { description: Validate without publishing, default: false, type: boolean }
+permissions: { contents: read }
+concurrency: { group: release-publication, cancel-in-progress: false, queue: max }
+jobs:
+  publish:
+    if: github.repository == 'kjanat/homebrew-tap' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: write, attestations: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { ref: master, persist-credentials: false }
+      - name: Verify and publish the prepared manifest
+        uses: kjanat/beepboop/actions/publish-manifest@aed3820147c0faac531b2787cbe9f13f14a2b4b8
+        with:
+          source_repository_id: ${{ inputs.source_repository_id }}
+          release_id: ${{ inputs.release_id }}
+          source_sha: ${{ inputs.source_sha }}
+          operation_id: ${{ inputs.operation_id }}
+          dry_run: ${{ inputs.dry_run }}
+          token: ${{ github.token }}
