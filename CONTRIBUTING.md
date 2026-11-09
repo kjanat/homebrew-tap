@@ -6,6 +6,13 @@ GoReleaser in [kjanat/actionlint](https://github.com/kjanat/actionlint) generate
 Make lasting changes in that repository's `.goreleaser.yaml`; release generation overwrites edits to the cask here.
 Actionlint releases update this tap only. The old `kjanat/actionlint` tap is a compatibility redirect.
 
+## macOS installation checks
+
+The `Cask checks` workflow installs, reinstalls, and uninstalls both casks on macOS 26 runners for Apple Silicon and Intel.
+It tests the checked-out commit, runs both binaries, compares all four installed completions with their sources or generated
+output, checks the actionlint manual page, and verifies that uninstall removes the installed files. Cask and completion
+changes trigger these checks; you can also run the workflow manually.
+
 ## ShellCheck refresh
 
 The hosted Renovate App opens one pull request for each ShellCheck update. Its custom managers update the four architecture
