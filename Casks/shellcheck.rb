@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 cask "shellcheck" do
   version "0.11.0"
 
@@ -23,7 +25,7 @@ cask "shellcheck" do
   end
 
   name "ShellCheck"
-  desc "Static analysis tool for shell scripts, as the static binary the project releases"
+  desc "Static analysis tool for shell scripts, distributed as an upstream binary"
   homepage "https://www.shellcheck.net/"
 
   livecheck do
@@ -33,23 +35,28 @@ cask "shellcheck" do
 
   binary "shellcheck-v#{version}/shellcheck"
   bash_completion "shellcheck.bash", target: "shellcheck"
-  fish_completion "shellcheck.fish"
   zsh_completion "_shellcheck"
+  fish_completion "shellcheck.fish"
   artifact "shellcheck.ps1",
            target: "#{HOMEBREW_PREFIX}/share/powershell/completions/shellcheck.ps1"
 
-  preflight do
-    completions = cask.tap.path/"completions/shellcheck"
-    FileUtils.cp completions/"bash/shellcheck", staged_path/"shellcheck.bash"
-    FileUtils.cp completions/"fish/shellcheck.fish", staged_path/"shellcheck.fish"
-    FileUtils.cp completions/"zsh/_shellcheck", staged_path/"_shellcheck"
-    FileUtils.cp completions/"powershell/shellcheck.ps1", staged_path/"shellcheck.ps1"
-  end
+  # Embed the files so serialized install steps do not depend on the tap path.
+  preflight_steps({
+    "bash/shellcheck"           => "shellcheck.bash",
+    "fish/shellcheck.fish"      => "shellcheck.fish",
+    "zsh/_shellcheck"           => "_shellcheck",
+    "powershell/shellcheck.ps1" => "shellcheck.ps1",
+  }.map do |source, target|
+    {
+      type:      "write",
+      path:      { base: "staged_path", path: target },
+      content:   (Tap.fetch("kjanat/tap").path/"completions/shellcheck"/source).read,
+      overwrite: true,
+    }
+  end)
 
   caveats <<~EOS
-    Usual bash, zsh, and fish completions are installed to
-			#{HOMEBREW_PREFIX}/share/{bash,zsh,fish}/completions/shellcheck.{bash,fish,_shellcheck}
-			and setup automatically by Homebrew.
+    Homebrew installs completions for bash, zsh, and fish automatically.
     PowerShell completion is installed to
       #{HOMEBREW_PREFIX}/share/powershell/completions/shellcheck.ps1
     Load it from your PowerShell profile:
