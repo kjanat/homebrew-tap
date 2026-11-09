@@ -38,10 +38,11 @@ cask "envctl" do
   container type: :naked
   binary "envctl"
   manpage "envctl.1"
+  pwsh_completion "_envctl.ps1"
   artifact "envctl.psm1", target: "#{HOMEBREW_PREFIX}/share/powershell/Modules/envctl/envctl.psm1"
   generate_completions_from_executable "envctl", "completions",
                                        base_name: "envctl",
-                                       shells:    [:bash, :zsh, :fish, :pwsh]
+                                       shells:    [:bash, :zsh, :fish]
 
   # Releases contain only the binary; CI checks this manual against the release tag.
   manual = (Tap.fetch("kjanat/tap").path/"manpages/envctl/envctl.1").read
@@ -57,6 +58,8 @@ cask "envctl" do
       run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}"]
     end
     run "{{staged_path}}/envctl", args: ["module", "pwsh"], stdout_path: "envctl.psm1"
+    # Homebrew's completion generator passes "powershell", but envctl requires "pwsh".
+    run "{{staged_path}}/envctl", args: ["completions", "pwsh"], stdout_path: "_envctl.ps1"
   end
 
   caveats <<~EOS
