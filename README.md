@@ -30,7 +30,8 @@ The `runner` cask installs `runner`, `run`, and generated Bash, Zsh, Fish, and P
 The `svg` cask installs `svg-language-server`, `svg-format`, and `svg-lint`.
 The `rshellcheck` cask installs the Rust port as `rshellcheck`, so it can coexist with upstream `shellcheck`.
 The `envctl` cask installs `envctl`, its manual page, generated Bash, Zsh, Fish, and PowerShell completions, and its PowerShell
-module. Run `brew info --cask kjanat/tap/envctl` for the PowerShell loading commands.
+module. Its Bash completions require Bash 4 or newer; macOS includes Bash 3.2. Run `brew info --cask kjanat/tap/envctl`
+for Bash setup and PowerShell loading commands.
 All four use prebuilt releases for Apple Silicon, Intel Macs, and ARM64 or x86-64 Linux.
 
 The old `kjanat/actionlint` tap redirects here through `tap_migrations.json`; actionlint releases update this tap only.

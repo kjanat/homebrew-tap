@@ -75,7 +75,7 @@ check_install() {
 		printf 'GREETING=before\n' >"$RUNNER_TEMP/envctl.env"
 		"$prefix/bin/envctl" set "$RUNNER_TEMP/envctl.env" GREETING hello --raw
 		test "$("$prefix/bin/envctl" get "$RUNNER_TEMP/envctl.env" GREETING --raw)" = hello
-		bash -ec '
+		"$prefix/bin/bash" -ec '
           source "$1"
           complete -p envctl
           COMP_WORDS=(envctl completions b)

@@ -63,6 +63,12 @@ cask "envctl" do
   end
 
   caveats <<~EOS
+    Bash completions require Bash 4 or newer. macOS includes Bash 3.2.
+    To use them, install Homebrew Bash and start it:
+      brew install bash
+      #{HOMEBREW_PREFIX}/bin/bash
+    Then load the completion in that shell:
+      source #{HOMEBREW_PREFIX}/etc/bash_completion.d/envctl
     Load PowerShell completions from your profile:
       . (Join-Path (brew --prefix) 'share/pwsh/completions/_envctl.ps1')
     Load the generated PowerShell cmdlets with:
