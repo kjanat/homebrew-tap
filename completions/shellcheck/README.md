@@ -57,7 +57,7 @@ The Bash, Zsh, and Fish source-path lists use `:` and target macOS/Linux. PowerS
 
 ## Use from your Homebrew cask without changing ShellCheck
 
-`Casks/shellcheck.rb` uses a `preflight` block to copy all four files from `cask.tap.path/"completions/shellcheck"` into the staging directory. Homebrew's completion/artifact stanzas then install them. There is no need to modify, rebuild, or repackage ShellCheck's upstream archive.
+`Casks/shellcheck.rb` reads all four files from the tap into declarative `preflight_steps`. These steps write the contents into the staging directory before Homebrew installs the completion artifacts. There is no need to modify, rebuild, or repackage ShellCheck's upstream archive.
 
 The installation stanzas are:
 
@@ -69,9 +69,9 @@ artifact "shellcheck.ps1",
          target: "#{HOMEBREW_PREFIX}/share/powershell/completions/shellcheck.ps1"
 ```
 
-The `preflight` block supplies the completion files missing from the upstream archive before these artifacts are installed.
+The preflight steps supply the completion files missing from the upstream archive before these artifacts are installed.
 
-Homebrew has dedicated artifact types for Bash, Fish, and Zsh, not PowerShell. The generic `artifact` installs the PowerShell script at a stable shared location. Add this line to the PowerShell profile to load it:
+This cask uses Homebrew's completion artifact types for Bash, Fish, and Zsh. Its generic `artifact` stanza installs the PowerShell script at a stable shared location. Add this line to the PowerShell profile to load it:
 
 ```powershell
 . (Join-Path (brew --prefix) 'share/powershell/completions/shellcheck.ps1')

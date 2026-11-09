@@ -12,7 +12,7 @@ brew install kjanat/tap/shellcheck
 | Cask         | Source                | Maintained by                                         |
 | ------------ | --------------------- | ----------------------------------------------------- |
 | `actionlint` | [kjanat/actionlint]   | GoReleaser, on every release of the source repository |
-| `shellcheck` | [koalaman/shellcheck] | scheduled release checks and update pull requests     |
+| `shellcheck` | [koalaman/shellcheck] | Renovate pull requests for versions and checksums     |
 
 The `actionlint` cask has no package dependencies. ShellCheck is optional: actionlint uses it when available on `PATH`.
 Install `kjanat/tap/shellcheck` separately if you want the upstream static binary and shell completions.

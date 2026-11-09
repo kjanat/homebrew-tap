@@ -1,6 +1,41 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ]
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"customManagers": [
+		{
+			"customType": "regex",
+			"description": "Update each ShellCheck release asset and its checksum together.",
+			"managerFilePatterns": ["/^Casks/shellcheck\\.rb$/"],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "koalaman/shellcheck",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
+			"description": "Keep the completion headers aligned with the ShellCheck cask.",
+			"managerFilePatterns": [
+				"/^completions/shellcheck/(bash/shellcheck|fish/shellcheck\\.fish|zsh/_shellcheck|powershell/shellcheck\\.ps1)$/"
+			],
+			"matchStrings": ["# ShellCheck (?<version>[0-9]+\\.[0-9]+\\.[0-9]+)"],
+			"depNameTemplate": "koalaman/shellcheck",
+			"datasourceTemplate": "github-releases",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "# ShellCheck {{{replace '^v' '' newValue}}}"
+		}
+	],
+	"packageRules": [
+		{
+			"matchManagers": ["custom.regex"],
+			"matchPackageNames": ["koalaman/shellcheck"],
+			"groupName": "ShellCheck cask and completions",
+			"minimumGroupSize": 8,
+			"automerge": false
+		}
+	]
 }

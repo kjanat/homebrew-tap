@@ -8,14 +8,15 @@ Actionlint releases update this tap only. The old `kjanat/actionlint` tap is a c
 
 ## ShellCheck refresh
 
-`Bump shellcheck` checks upstream releases every Monday at 06:17 UTC and supports manual dispatch. It updates the version
-and asset hashes, refreshes the four completion headers, validates them, and opens a PR when files change. Existing PRs are
-reused; if a previous run pushed the branch but failed to open its PR, the next run retries PR creation. Branch names
-include a hash of the cask and completion files, so different content does not collide with an earlier PR for the same version.
+The hosted Renovate App opens one pull request for each ShellCheck update. Its custom managers update the four architecture
+versions and SHA-256 checksums together with the four completion headers. Each architecture keeps its version beside its
+checksum so Renovate can replace both in one operation. Keep all four versions equal.
 
-The workflow uses `GITHUB_TOKEN`. Enable **Settings → Actions → General → Allow GitHub Actions to create and approve pull
-requests** before running it. This repository setting is separate from the workflow's `pull-requests: write` permission.
+The `ShellCheck release integrity` check downloads all four release archives, verifies their checksums, and checks that the
+completion headers match the cask version. Review this check before merging; these updates do not merge automatically.
+Renovate leaves the actionlint cask to its existing release publisher.
 
 Completion flag definitions are maintained in `completions/shellcheck/`; changing their version headers does not add support
-for new upstream options. The cask copies these files from the installed tap during installation; no embedding step is
-needed. See the [completion documentation](completions/shellcheck/README.md) for implementation details and tests.
+for new upstream options. The cask reads the files from the tap into declarative preflight steps, which write them into the
+staging directory during installation. See the [completion documentation](completions/shellcheck/README.md) for implementation
+details and tests.

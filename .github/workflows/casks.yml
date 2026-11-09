@@ -1,0 +1,24 @@
+name: Cask checks
+on:
+  push:
+    branches: [master]
+    paths: &Paths [Casks/shellcheck.rb, completions/shellcheck/**, renovate.json, .github/scripts/check-shellcheck.ts, .github/workflows/casks.yml]
+  pull_request:
+    paths: *Paths
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  shellcheck:
+    name: ShellCheck release integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with: { deno-version: v2.x }
+      - run: ruby -c Casks/shellcheck.rb
+      - name: Verify all release checksums and completion versions
+        run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
+      - name: Check Bash completion behavior
+        run: python3 completions/shellcheck/tests/test_bash.py
