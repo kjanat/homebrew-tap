@@ -1,6 +1,8 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended"],
+	"extends": [
+		"config:recommended"
+	],
 	"customManagers": [
 		{
 			"customType": "regex",
@@ -49,8 +51,25 @@
 		},
 		{
 			"customType": "regex",
+			"description": "Update envctl release assets and checksums together.",
+			"managerFilePatterns": [
+				"/^Casks/envctl\\.rb$/"
+			],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "kjanat/envctl",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
 			"description": "Update each ShellCheck release asset and its checksum together.",
-			"managerFilePatterns": ["/^Casks/shellcheck\\.rb$/"],
+			"managerFilePatterns": [
+				"/^Casks/shellcheck\\.rb$/"
+			],
 			"matchStrings": [
 				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
 			],
@@ -66,7 +85,9 @@
 			"managerFilePatterns": [
 				"/^completions/shellcheck/(bash/shellcheck|fish/shellcheck\\.fish|zsh/_shellcheck|powershell/shellcheck\\.ps1)$/"
 			],
-			"matchStrings": ["# ShellCheck (?<version>[0-9]+\\.[0-9]+\\.[0-9]+)"],
+			"matchStrings": [
+				"# ShellCheck (?<version>[0-9]+\\.[0-9]+\\.[0-9]+)"
+			],
 			"depNameTemplate": "koalaman/shellcheck",
 			"datasourceTemplate": "github-releases",
 			"versioningTemplate": "semver",
@@ -109,8 +130,23 @@
 			"automerge": false
 		},
 		{
-			"matchManagers": ["custom.regex"],
-			"matchPackageNames": ["koalaman/shellcheck"],
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"kjanat/envctl"
+			],
+			"groupName": "envctl cask",
+			"minimumGroupSize": 4,
+			"automerge": false
+		},
+		{
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"koalaman/shellcheck"
+			],
 			"groupName": "ShellCheck cask and completions",
 			"minimumGroupSize": 8,
 			"automerge": false

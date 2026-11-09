@@ -5,6 +5,7 @@ on:
     paths: &Paths [
       Casks/**,
       completions/shellcheck/**,
+      manpages/envctl/**,
       renovate.json,
       .github/scripts/check-shellcheck.ts,
       .github/scripts/check-release-casks.ts,
@@ -30,8 +31,8 @@ jobs:
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         run: python3 completions/shellcheck/tests/test_bash.py
-      - name: Verify runner, SVG, and rshellcheck releases
-        run: deno run --allow-read=Casks --allow-net .github/scripts/check-release-casks.ts
+      - name: Verify runner, SVG, rshellcheck, and envctl releases
+        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask installs (${{ matrix.runner }})
     strategy:
