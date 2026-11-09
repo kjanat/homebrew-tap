@@ -8,10 +8,19 @@ Actionlint releases update this tap only. The old `kjanat/actionlint` tap is a c
 
 ## macOS installation checks
 
-The `Cask checks` workflow installs, reinstalls, and uninstalls both casks on macOS 26 runners for Apple Silicon and Intel.
-It tests the checked-out commit, runs both binaries, compares all four installed completions with their sources or generated
+The `Cask checks` workflow installs, reinstalls, and uninstalls all five casks on macOS 26 runners for Apple Silicon and Intel.
+It tests the checked-out commit, runs every binary, compares installed completions with their sources or generated
 output, checks the actionlint manual page, and verifies that uninstall removes the installed files. Cask and completion
 changes trigger these checks; you can also run the workflow manually.
+
+## Runner, SVG, and rshellcheck updates
+
+Hosted Renovate groups each tool's four architecture versions and checksums into one reviewable pull request.
+The release check downloads and verifies all twelve archives; macOS jobs also exercise the installed commands.
+These updates do not merge automatically. The rshellcheck manager follows `rshellcheck-v` tags in `kjanat/shellcheck-rs`.
+
+Runner generates its completions during installation. SVG and rshellcheck currently install their released binaries without
+completion files. Runner's binary archives do not include its separately published manual pages.
 
 ## ShellCheck refresh
 

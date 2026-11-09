@@ -7,6 +7,7 @@ on:
       completions/shellcheck/**,
       renovate.json,
       .github/scripts/check-shellcheck.ts,
+      .github/scripts/check-release-casks.ts,
       .github/scripts/check-cask-install.sh,
       .github/workflows/casks.yml,
     ]
@@ -29,6 +30,8 @@ jobs:
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         run: python3 completions/shellcheck/tests/test_bash.py
+      - name: Verify runner, SVG, and rshellcheck releases
+        run: deno run --allow-read=Casks --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask installs (${{ matrix.runner }})
     strategy:
@@ -51,7 +54,7 @@ jobs:
           uname -m
           brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
-      - name: Install, reinstall, and uninstall both casks
+      - name: Install, reinstall, and uninstall all casks
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
         run: bash .github/scripts/check-cask-install.sh

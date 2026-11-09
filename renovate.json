@@ -4,6 +4,51 @@
 	"customManagers": [
 		{
 			"customType": "regex",
+			"description": "Update runner release assets and checksums together.",
+			"managerFilePatterns": [
+				"/^Casks/runner\\.rb$/"
+			],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "kjanat/runner",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
+			"description": "Update svg release assets and checksums together.",
+			"managerFilePatterns": [
+				"/^Casks/svg\\.rb$/"
+			],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "kjanat/svg",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
+			"description": "Update rshellcheck release assets and checksums together.",
+			"managerFilePatterns": [
+				"/^Casks/rshellcheck\\.rb$/"
+			],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "kjanat/shellcheck-rs",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "regex:^rshellcheck-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+			"currentValueTemplate": "rshellcheck-v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^rshellcheck-v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
 			"description": "Update each ShellCheck release asset and its checksum together.",
 			"managerFilePatterns": ["/^Casks/shellcheck\\.rb$/"],
 			"matchStrings": [
@@ -30,6 +75,39 @@
 		}
 	],
 	"packageRules": [
+		{
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"kjanat/runner"
+			],
+			"groupName": "runner cask",
+			"minimumGroupSize": 4,
+			"automerge": false
+		},
+		{
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"kjanat/svg"
+			],
+			"groupName": "svg cask",
+			"minimumGroupSize": 4,
+			"automerge": false
+		},
+		{
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"kjanat/shellcheck-rs"
+			],
+			"groupName": "rshellcheck cask",
+			"minimumGroupSize": 4,
+			"automerge": false
+		},
 		{
 			"matchManagers": ["custom.regex"],
 			"matchPackageNames": ["koalaman/shellcheck"],
