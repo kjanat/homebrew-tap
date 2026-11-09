@@ -32,14 +32,24 @@ check_install() {
 		printf 'name: Smoke\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n' \
 			| "$prefix/bin/actionlint" -shellcheck= -pyflakes= -
 	elif [[ $cask == runner ]]; then
+		local runner_executable
+		runner_executable=$(ruby -e 'puts File.realpath(ARGV.fetch(0))' "$prefix/bin/runner")
 		for shell in bash zsh fish pwsh; do
-			"$prefix/bin/runner" completions "$shell" >"$RUNNER_TEMP/runner-$shell"
+			"$runner_executable" completions "$shell" >"$RUNNER_TEMP/runner-$shell"
 		done
 		cmp "$RUNNER_TEMP/runner-bash" "$prefix/etc/bash_completion.d/runner"
 		cmp "$RUNNER_TEMP/runner-zsh" "$prefix/share/zsh/site-functions/_runner"
 		cmp "$RUNNER_TEMP/runner-fish" "$prefix/share/fish/vendor_completions.d/runner.fish"
 		cmp "$RUNNER_TEMP/runner-pwsh" "$prefix/share/pwsh/completions/_runner.ps1"
-		bash -c 'source "$1"; complete -p runner run' bash "$prefix/etc/bash_completion.d/runner"
+		bash -ec '
+          source "$1"
+          complete -p runner run
+          COMP_WORDS=(runner --)
+          COMP_CWORD=1
+          COMP_TYPE=9
+          _clap_complete_runner runner --
+          [[ " ${COMPREPLY[*]} " == *" --help "* ]]
+        ' bash "$prefix/etc/bash_completion.d/runner"
 		"$prefix/bin/runner" --help >/dev/null
 	elif [[ $cask == svg ]]; then
 		printf '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L1 1"/></svg>\n' \
