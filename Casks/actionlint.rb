@@ -40,6 +40,9 @@ cask "actionlint" do
                                        shells:    [:bash, :zsh, :fish, :pwsh]
 
   preflight_steps do
+    [:bash_completion, :zsh_completion, :fish_completion, :pwsh_completion].each do |completion|
+      mkdir_p ".", base: completion
+    end
     on_macos do
       run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}/actionlint"]
     end

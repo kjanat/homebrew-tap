@@ -45,7 +45,7 @@ jobs:
         with: { persist-credentials: false }
       - name: Update Homebrew and register the checked-out tap
         run: |
-          brew update
+          HOMEBREW_DISABLE_LOAD_FORMULA=1 brew update
           brew --version
           sw_vers
           uname -m
