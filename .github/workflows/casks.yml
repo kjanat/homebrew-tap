@@ -55,11 +55,19 @@ jobs:
           uname -m
           brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
-      - name: Install Bash for envctl completion checks
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: 1
-        run: brew install bash
+      - name: Build Bash for envctl completion checks
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz --output bash-5.3.tar.gz
+          echo '0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba  bash-5.3.tar.gz' | shasum -a 256 --check -
+          tar -xzf bash-5.3.tar.gz
+          cd bash-5.3
+          ./configure --disable-nls --without-installed-readline
+          make -j"$(sysctl -n hw.ncpu)" bash
+          ./bash --version
       - name: Install, reinstall, and uninstall all casks
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
+          CASK_TEST_BASH: ${{ runner.temp }}/bash-5.3/bash
         run: bash .github/scripts/check-cask-install.sh

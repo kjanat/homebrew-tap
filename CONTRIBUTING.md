@@ -13,6 +13,9 @@ It tests the checked-out commit, runs every binary, compares installed completio
 output, checks the actionlint and envctl manual pages, and verifies that uninstall removes the installed files. Cask and completion
 changes trigger these checks; you can also run the workflow manually.
 
+CI builds checksum-pinned GNU Bash 5.3 with its bundled Readline for the envctl completion check. This avoids building
+Homebrew's dependency updates on Intel Macs. `CASK_TEST_BASH` selects that test binary; local runs default to Homebrew Bash.
+
 ## Runner, SVG, rshellcheck, and envctl updates
 
 Hosted Renovate groups each tool's four architecture versions and checksums into one reviewable pull request.
