@@ -66,6 +66,21 @@
 		},
 		{
 			"customType": "regex",
+			"description": "Update fsql release assets and checksums together.",
+			"managerFilePatterns": [
+				"/^Casks/fsql\\.rb$/"
+			],
+			"matchStrings": [
+				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+			],
+			"depNameTemplate": "kjanat/fsql",
+			"datasourceTemplate": "github-release-attachments",
+			"versioningTemplate": "semver",
+			"currentValueTemplate": "v{{{version}}}",
+			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+		},
+		{
+			"customType": "regex",
 			"description": "Update each ShellCheck release asset and its checksum together.",
 			"managerFilePatterns": [
 				"/^Casks/shellcheck\\.rb$/"
@@ -137,6 +152,17 @@
 				"kjanat/envctl"
 			],
 			"groupName": "envctl cask",
+			"minimumGroupSize": 4,
+			"automerge": false
+		},
+		{
+			"matchManagers": [
+				"custom.regex"
+			],
+			"matchPackageNames": [
+				"kjanat/fsql"
+			],
+			"groupName": "fsql cask",
 			"minimumGroupSize": 4,
 			"automerge": false
 		},

@@ -9,6 +9,7 @@ brew install kjanat/tap/actionlint
 brew install kjanat/tap/shellcheck
 brew install --cask kjanat/tap/runner kjanat/tap/svg kjanat/tap/rshellcheck
 brew install --cask kjanat/tap/envctl
+brew install --cask kjanat/tap/fsql
 ```
 
 | Cask          | Source                 | Maintained by                                         |
@@ -19,6 +20,7 @@ brew install --cask kjanat/tap/envctl
 | `svg`         | [kjanat/svg]           | Renovate pull requests for versions and checksums     |
 | `rshellcheck` | [kjanat/shellcheck-rs] | Renovate pull requests for versions and checksums     |
 | `envctl`      | [kjanat/envctl]        | Renovate pull requests for versions and checksums     |
+| `fsql`        | [kjanat/fsql]          | Renovate pull requests for versions and checksums     |
 
 The `actionlint` cask has no package dependencies. ShellCheck is optional: actionlint uses it when available on `PATH`.
 Install `kjanat/tap/shellcheck` separately if you want the upstream static binary and shell completions.
@@ -32,7 +34,10 @@ The `rshellcheck` cask installs the Rust port as `rshellcheck`, so it can coexis
 The `envctl` cask installs `envctl`, its manual page, generated Bash, Zsh, Fish, and PowerShell completions, and its PowerShell
 module. Its Bash completions require Bash 4 or newer; macOS includes Bash 3.2. Run `brew info --cask kjanat/tap/envctl`
 for Bash setup and PowerShell loading commands.
-All four use prebuilt releases for Apple Silicon, Intel Macs, and ARM64 or x86-64 Linux.
+The `fsql` cask installs the SQL filesystem CLI. Its release has no shell completions or manual page;
+[fsql#38](https://github.com/kjanat/fsql/issues/38) tracks adding them. Uninstalling the cask preserves journals and undo data.
+All five use prebuilt releases for Apple Silicon, Intel Macs, and ARM64 or x86-64 Linux.
+The fsql Linux binaries require glibc 2.34 or newer.
 
 The old `kjanat/actionlint` tap redirects here through `tap_migrations.json`; actionlint releases update this tap only.
 
@@ -54,3 +59,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for cask maintenance and automation setup
 [kjanat/svg]: https://github.com/kjanat/svg
 [kjanat/shellcheck-rs]: https://github.com/kjanat/shellcheck-rs
 [kjanat/envctl]: https://github.com/kjanat/envctl
+[kjanat/fsql]: https://github.com/kjanat/fsql

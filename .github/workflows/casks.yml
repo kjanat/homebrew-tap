@@ -31,7 +31,7 @@ jobs:
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         run: python3 completions/shellcheck/tests/test_bash.py
-      - name: Verify runner, SVG, rshellcheck, and envctl releases
+      - name: Verify tool release assets and bundled manuals
         run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask installs (${{ matrix.runner }})

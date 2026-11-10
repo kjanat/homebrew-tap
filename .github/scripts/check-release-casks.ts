@@ -1,4 +1,11 @@
 const packages = [
+	{
+		name: 'fsql',
+		repository: 'fsql',
+		tagPrefix: 'v',
+		assetTemplate: 'fsql-{target}',
+		targets: ['aarch64-apple-darwin', 'x86_64-apple-darwin', 'aarch64-unknown-linux-gnu', 'x86_64-unknown-linux-gnu'],
+	},
 	{ name: 'runner', repository: 'runner', tagPrefix: 'v', assetTemplate: 'runner-v{version}-{target}.tar.gz' },
 	{ name: 'svg', repository: 'svg', tagPrefix: 'v', assetTemplate: 'svg-v{version}-{target}.tar.gz' },
 	{

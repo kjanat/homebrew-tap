@@ -60,6 +60,27 @@ check_install() {
 		"$prefix/bin/svg-lint" "$RUNNER_TEMP/smoke.svg"
 	elif [[ $cask == rshellcheck ]]; then
 		printf '#!/bin/sh\necho "$HOME"\n' | "$prefix/bin/rshellcheck" --norc -
+	elif [[ $cask == fsql ]]; then
+		local fixture journal_id
+		fixture=$(mktemp -d "$RUNNER_TEMP/fsql.XXXXXX")
+		mkdir "$fixture/files" "$fixture/journals"
+		printf 'sample\n' >"$fixture/files/probe.txt"
+		"$prefix/bin/fsql" -C "$fixture/files" -f json \
+			-e "SELECT name, size FROM files WHERE kind = 'file'" >"$fixture/result.json"
+		ruby -rjson -e 'abort "Unexpected query result" unless JSON.parse(File.read(ARGV.fetch(0))) == {"name" => "probe.txt", "size" => 7}' "$fixture/result.json"
+		"$prefix/bin/fsql" -C "$fixture/files" \
+			-e "UPDATE files SET name = 'moved.txt' WHERE name = 'probe.txt'" >"$fixture/preview.txt"
+		test -f "$fixture/files/probe.txt"
+		test ! -e "$fixture/files/moved.txt"
+		"$prefix/bin/fsql" -C "$fixture/files" --journal-dir "$fixture/journals" --apply \
+			-e "UPDATE files SET name = 'moved.txt' WHERE name = 'probe.txt'"
+		test -f "$fixture/files/moved.txt"
+		test ! -e "$fixture/files/probe.txt"
+		journal_id=$("$prefix/bin/fsql" --journal-dir "$fixture/journals" journal | awk 'NR == 1 {print $1}')
+		test -n "$journal_id"
+		"$prefix/bin/fsql" --journal-dir "$fixture/journals" undo "$journal_id"
+		test "$(cat "$fixture/files/probe.txt")" = sample
+		test ! -e "$fixture/files/moved.txt"
 	elif [[ $cask == envctl ]]; then
 		for shell in bash zsh fish pwsh; do
 			"$prefix/bin/envctl" completions "$shell" >"$RUNNER_TEMP/envctl-$shell"
@@ -97,7 +118,7 @@ check_install() {
 	fi
 }
 
-for cask in actionlint shellcheck runner svg rshellcheck envctl; do
+for cask in actionlint shellcheck runner svg rshellcheck envctl fsql; do
 	# Hosted runners may already have the core formula linked into the same prefix.
 	if brew list --formula "$cask" >/dev/null 2>&1; then
 		brew unlink "$cask"
