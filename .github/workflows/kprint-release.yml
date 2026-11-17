@@ -1,0 +1,106 @@
+name: Publish kprint manifest
+run-name: ${{ inputs.beepboop_title || github.workflow }}
+on:
+  workflow_dispatch:
+    inputs:
+      beepboop_execution_id:
+        required: true
+        type: string
+      beepboop_title:
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: kprint-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'kjanat/homebrew-tap' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: kjanat/beepboop/actions/begin@36720c127ca101d85b449b13bff3b8bff1b5f557 # v1.6.0
+        id: beepboop
+        with:
+          execution-id: ${{ inputs.beepboop_execution_id }}
+          stream: kprint
+          operation: publish
+      - name: Validate upstream release
+        id: release
+        env:
+          CONTEXT: ${{ steps.beepboop.outputs.context }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          context_file=$(jq -er .contextFile <<< "${CONTEXT}")
+          jq -e '.upstreamRelease.repository.name == "kjanat/kprint" and .upstreamRelease.repository.id == 1092062077 and .upstreamRelease.stream == "main"' "${context_file}"
+          version=$(jq -er '.upstreamRelease.version' "${context_file}")
+          if [[ "${version}" == *-* ]]; then
+            echo 'Skipping prerelease distribution'
+            echo stable=false >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          sha=$(jq -er '.upstreamRelease.commit' "${context_file}")
+          [[ "${sha}" =~ ^[0-9a-f]{40}$ ]]
+          release_id=$(jq -er '.upstreamRelease.releaseId | numbers' "${context_file}")
+          gh api "repos/kjanat/kprint/releases/${release_id}" > "${RUNNER_TEMP}/kprint-release.json"
+          jq -e --arg version "${version}" '.draft == false and .prerelease == false and .tag_name == $version' "${RUNNER_TEMP}/kprint-release.json"
+          {
+            echo "version=${version}"
+            echo "sha=${sha}"
+            echo stable=true
+          } >> "${GITHUB_OUTPUT}"
+      - name: Checkout verified upstream source
+        if: steps.release.outputs.stable == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: kjanat/kprint
+          ref: ${{ steps.release.outputs.sha }}
+          persist-credentials: false
+      - name: Render release manifests
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          GITHUB_REPOSITORY: kjanat/kprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download "${VERSION}" --repo kjanat/kprint --pattern SHASUMS256.txt --dir "${RUNNER_TEMP}"
+          .github/scripts/package-managers.sh render "${VERSION}" "${RUNNER_TEMP}/SHASUMS256.txt" "${RUNNER_TEMP}/manifests"
+      - uses: kjanat/beepboop/actions/token@36720c127ca101d85b449b13bff3b8bff1b5f557 # v1.6.0
+        if: steps.release.outputs.stable == 'true'
+        id: bot
+        with:
+          execution-id: ${{ inputs.beepboop_execution_id }}
+          permission-contents: write
+      - name: Publish and verify manifest
+        if: steps.release.outputs.stable == 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="repos/kjanat/homebrew-tap/contents/Casks/kprint.rb"
+          file="${RUNNER_TEMP}/manifests/kprint.rb"
+          previous="${RUNNER_TEMP}/previous.json"
+          if gh api "${endpoint}?ref=master" > "${previous}"; then
+            jq -r .content "${previous}" | base64 -d > "${RUNNER_TEMP}/published"
+            if cmp -s "${file}" "${RUNNER_TEMP}/published"; then
+              echo 'Manifest already published'
+              exit 0
+            fi
+            sha=$(jq -er .sha "${previous}")
+          else
+            jq -e '.status == "404" or .status == 404' "${previous}"
+            sha=''
+          fi
+          jq -n --arg version "${VERSION}" --arg sha "${sha}" --rawfile content "${file}" \
+            '{message: ("Update kprint to " + $version), branch: "master", content: ($content | @base64)} + (if $sha == "" then {} else {sha: $sha} end)' \
+            | gh api --method PUT "${endpoint}" --input - > "${RUNNER_TEMP}/publication.json"
+          gh api "${endpoint}?ref=master" --jq .content | base64 -d > "${RUNNER_TEMP}/published"
+          cmp "${file}" "${RUNNER_TEMP}/published"

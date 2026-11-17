@@ -1,0 +1,30 @@
+{
+  "$schema": "https://beepboop.kjanat.dev/schema/v1.json",
+  "streams": {
+    "kprint": {
+      "versionScope": "none",
+      "workflows": {
+        "publish": {
+          "file": "kprint-release.yml",
+          "ref": "refs/heads/master",
+          "mode": "dispatch",
+          "publications": []
+        }
+      }
+    }
+  },
+  "subscriptions": [
+    {
+      "id": "kprint-release",
+      "source": "kjanat/kprint",
+      "sourceStream": "main",
+      "event": "release",
+      "stream": "kprint",
+      "operation": "publish"
+    }
+  ],
+  "managers": [
+    "workflow"
+  ],
+  "actionsRevision": "36720c127ca101d85b449b13bff3b8bff1b5f557"
+}
