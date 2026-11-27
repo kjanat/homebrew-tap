@@ -22,12 +22,6 @@ brew install --cask kjanat/tap/svg
 | [svg]         | Get editor support for SVG and format or lint SVG files | `svg-language-server`, `svg-format`, `svg-lint` |     ❌      |
 | [fsql]        | Find and modify files with SQL                          | `fsql`                                          |     ❌      |
 
-## Setup and upgrades
-
-- **ShellCheck with actionlint.** Actionlint uses ShellCheck when it finds it on `PATH`. If the core `shellcheck` formula is installed, uninstall it before installing the tap’s cask to avoid a binary conflict.
-- **Completion-only updates.** After `brew update`, run `brew reinstall --cask kjanat/tap/shellcheck` to pick up completion changes at the same ShellCheck version.
-- **fsql on Linux.** The release binaries require glibc 2.34 or newer.
-
 ## Help and contributions
 
 Use the project links in the catalog for help with a tool. Report installation or packaging issues in the [tap’s issue tracker]. To change a cask or its automation, see [Contributing](CONTRIBUTING.md).
