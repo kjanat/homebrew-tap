@@ -16,7 +16,7 @@ brew install --cask kjanat/tap/svg
 | ------------- | ------------------------------------------------------- |
 | [actionlint]  | GitHub Actions workflow linter                          |
 | [shellcheck]  | Upstream shell script linter and shell completions      |
-| [rshellcheck] | Rust ShellCheck port, installed alongside `shellcheck`  |
+| [rshellcheck] | Rust port of ShellCheck                                 |
 | [runner]      | Task runner with `runner`, `run`, and shell completions |
 | [envctl]      | Environment file CLI, manual, and shell integrations    |
 | [svg]         | `svg-language-server`, `svg-format`, and `svg-lint`     |
