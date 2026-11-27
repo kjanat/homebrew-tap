@@ -27,7 +27,7 @@ brew install --cask kjanat/tap/svg
 | [runner] | Task runner with `runner`, `run`, and shell completions |
 | [envctl] | Environment file CLI, manual, and shell integrations    |
 
-### File tooling
+### SVG and filesystem tools
 
 | Cask   | What it installs                                    |
 | ------ | --------------------------------------------------- |
