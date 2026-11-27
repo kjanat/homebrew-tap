@@ -30,7 +30,8 @@ jobs:
       - name: Check cask syntax and style
         run: |
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=advice.detachedHead GIT_CONFIG_VALUE_0=false \
+            brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           tap_dir=$(brew --repository kjanat/tap)
           files=("$tap_dir"/Casks/*.rb)
           for file in "${files[@]}"; do
