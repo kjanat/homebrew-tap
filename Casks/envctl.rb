@@ -46,12 +46,15 @@ cask "envctl" do
   artifact "envctl.psm1", target: "#{HOMEBREW_PREFIX}/share/powershell/Modules/envctl/envctl.psm1"
 
   # Releases contain only the binary; CI checks this manual against the release tag.
-  manual = (Tap.fetch("kjanat/tap").path/"manpages/envctl/envctl.1").read
+  preflight_steps([{
+    type:      "write",
+    path:      { base: "staged_path", path: "envctl.1" },
+    content:   (Tap.fetch("kjanat/tap").path/"manpages/envctl/envctl.1").read,
+    overwrite: true,
+  }])
   preflight_steps do
     move "envctl-*", "envctl", source_glob: true
     set_permissions "envctl", "755", recursive: false
-    # Embed the vendored manual so installation does not depend on the tap path.
-    write_file "envctl.1", manual # rubocop:disable Cask/InstallSteps
     mkdir_p "etc/bash_completion.d", base: :homebrew_prefix
     mkdir_p "share/zsh/site-functions", base: :homebrew_prefix
     mkdir_p "share/fish/vendor_completions.d", base: :homebrew_prefix

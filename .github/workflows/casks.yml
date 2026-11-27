@@ -18,8 +18,28 @@ on:
   workflow_dispatch:
 permissions: { contents: read }
 jobs:
+  lint:
+    name: Cask lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Check cask syntax and style
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
+          tap_dir=$(brew --repository kjanat/tap)
+          files=("$tap_dir"/Casks/*.rb)
+          for file in "${files[@]}"; do
+            ruby -c "$file"
+          done
+          brew style "${files[@]}"
   plan:
     name: Plan cask checks
+    needs: lint
     runs-on: ubuntu-latest
     outputs:
       install: ${{ steps.plan.outputs.install }}
@@ -29,32 +49,6 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - id: plan
         run: python3 .github/scripts/plan-cask-checks.py
-  lint:
-    name: Cask lint
-    needs: plan
-    if: fromJSON(needs.plan.outputs.install).include[0] != null
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      HOMEBREW_NO_AUTO_UPDATE: 1
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with: { persist-credentials: false }
-      - name: Check cask syntax and style
-        env:
-          INSTALL_MATRIX: ${{ needs.plan.outputs.install }}
-        run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
-          tap_dir=$(brew --repository kjanat/tap)
-          mapfile -t casks < <(jq -r '[.include[].cask] | unique[]' <<< "$INSTALL_MATRIX")
-          files=()
-          for cask in "${casks[@]}"; do
-            file="$tap_dir/Casks/$cask.rb"
-            ruby -c "$file"
-            files+=("$file")
-          done
-          brew style "${files[@]}"
   integrity:
     name: Release integrity (${{ matrix.cask }})
     needs: plan
