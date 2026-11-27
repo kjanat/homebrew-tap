@@ -4,10 +4,14 @@ set -euo pipefail
 prefix=$(brew --prefix)
 completion_bash=${CASK_TEST_BASH:-$prefix/bin/bash}
 
+cask_version() {
+	brew info --cask --json=v2 "kjanat/tap/$1" | ruby -rjson -e 'puts JSON.parse(STDIN.read).fetch("casks").first.fetch("version")'
+}
+
 check_install() {
 	local cask=$1
 	local version
-	version=$(brew info --cask --json=v2 "kjanat/tap/$cask" | ruby -rjson -e 'puts JSON.parse(STDIN.read).fetch("casks").first.fetch("version")')
+	version=$(cask_version "$cask")
 	for binary in "${binaries[@]}"; do
 		"$prefix/bin/$binary" --version | tee "$RUNNER_TEMP/$binary-version.txt"
 		grep -F "$version" "$RUNNER_TEMP/$binary-version.txt"
@@ -148,6 +152,17 @@ for cask in actionlint shellcheck runner svg rshellcheck envctl fsql; do
 		artifacts+=("share/pwsh/completions/_runner.ps1")
 	elif [[ $cask == envctl ]]; then
 		artifacts+=("share/man/man1/envctl.1" "share/pwsh/completions/_envctl.ps1" "share/powershell/Modules/envctl/envctl.psm1")
+	fi
+
+	if [[ $cask == svg ]] && ruby -e 'exit Gem::Version.new(ARGV.fetch(0)) > Gem::Version.new("0.5.2") ? 0 : 1' "$(cask_version "$cask")"; then
+		for binary in "${binaries[@]}"; do
+			artifacts+=(
+				"etc/bash_completion.d/$binary"
+				"share/zsh/site-functions/_$binary"
+				"share/fish/vendor_completions.d/$binary.fish"
+			)
+		done
+		artifacts+=("share/pwsh/completions/_svg.ps1")
 	fi
 
 	brew install --cask "kjanat/tap/$cask"
