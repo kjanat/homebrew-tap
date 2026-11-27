@@ -40,7 +40,7 @@ cask "svg" do
   binary "svg-lint"
 
   # Releases through 0.5.2 do not contain completion scripts.
-  completions_available = version > "0.5.2"
+  completions_available = Gem::Version.new(version) > Gem::Version.new("0.5.2")
   if completions_available
     %w[svg-format svg-lint svg-language-server].each do |command|
       bash_completion "completions/bash/#{command}"
