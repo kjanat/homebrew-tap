@@ -39,11 +39,27 @@ cask "svg" do
   binary "svg-format"
   binary "svg-lint"
 
+  # Releases through 0.5.2 do not contain completion scripts.
+  completions_available = Gem::Version.new(version) > Gem::Version.new("0.5.2")
+  if completions_available
+    %w[svg-format svg-lint svg-language-server].each do |command|
+      bash_completion "completions/bash/#{command}"
+      zsh_completion "completions/zsh/_#{command}"
+      fish_completion "completions/fish/#{command}.fish"
+    end
+    pwsh_completion "completions/powershell/_svg.ps1"
+  end
+
   preflight_steps do
     on_macos do
       run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}"]
     end
   end
+
+  caveats <<~EOS if completions_available
+    Load the PowerShell completions from your profile:
+      . (Join-Path (brew --prefix) 'share/pwsh/completions/_svg.ps1')
+  EOS
 
   zap :not_required
 end
