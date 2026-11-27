@@ -131,7 +131,9 @@
 			],
 			"groupName": "svg cask",
 			"minimumGroupSize": 4,
-			"automerge": false
+			"automerge": true,
+			"platformAutomerge": false,
+			"automergeStrategy": "squash"
 		},
 		{
 			"matchManagers": [
