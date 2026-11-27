@@ -37,6 +37,7 @@ cask "fsql" do
   end
 
   container type: :naked
+
   binary "fsql"
 
   preflight_steps do

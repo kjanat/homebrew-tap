@@ -27,7 +27,7 @@ cask "svg" do
   end
 
   name "svg"
-  desc "SVG language server, formatter, and linter"
+  desc "Language server and command-line tools for SVG"
   homepage "https://github.com/kjanat/svg"
 
   livecheck do

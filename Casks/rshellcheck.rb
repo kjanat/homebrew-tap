@@ -14,6 +14,11 @@ cask "rshellcheck" do
       sha256 "73a6caad08fa2ca8d93cc911d80bb77380d711ccc0c03c588af2cc7b97fb0861"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-x86_64-apple-darwin.tar.gz"
     end
+
+    executable = "rshellcheck-#{version}-#{arch}-apple-darwin/rshellcheck"
+    binary executable
+    generate_completions_from_executable executable, "--generate-completions",
+                                         shells: [:bash, :zsh, :fish, :pwsh]
   end
   on_linux do
     on_arm do
@@ -26,6 +31,11 @@ cask "rshellcheck" do
       sha256 "e785cb702d883a9dcafd694fd3c0bd5e0591f0a4b2f0e880dab5bd8ee71355ac"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-x86_64-unknown-linux-musl.tar.gz"
     end
+
+    executable = "rshellcheck-#{version}-#{arch}-unknown-linux-musl/rshellcheck"
+    binary executable
+    generate_completions_from_executable executable, "--generate-completions",
+                                         shells: [:bash, :zsh, :fish, :pwsh]
   end
 
   name "rshellcheck"
@@ -36,19 +46,6 @@ cask "rshellcheck" do
     url :url
     regex(/^rshellcheck-v?(\d+(?:\.\d+)+)$/i)
     strategy :github_latest
-  end
-
-  on_macos do
-    executable = "rshellcheck-#{version}-#{arch}-apple-darwin/rshellcheck"
-    binary executable
-    generate_completions_from_executable executable, "--generate-completions",
-                                         shells: [:bash, :zsh, :fish, :pwsh]
-  end
-  on_linux do
-    executable = "rshellcheck-#{version}-#{arch}-unknown-linux-musl/rshellcheck"
-    binary executable
-    generate_completions_from_executable executable, "--generate-completions",
-                                         shells: [:bash, :zsh, :fish, :pwsh]
   end
 
   preflight_steps do
