@@ -123,7 +123,12 @@ check_install() {
 }
 
 if (($# == 0)); then
-	set -- actionlint shellcheck runner svg rshellcheck envctl fsql
+	shopt -s nullglob
+	for cask_file in Casks/*.rb; do
+		cask_name=${cask_file##*/}
+		set -- "$@" "${cask_name%.rb}"
+	done
+	shopt -u nullglob
 fi
 
 for cask in "$@"; do
