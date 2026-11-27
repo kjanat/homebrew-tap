@@ -4,7 +4,7 @@ Prebuilt command-line tools for GitHub Actions, shell scripts, SVG, and local au
 
 ## Install a tool
 
-Replace `svg` with the cask you want from the table below.
+Replace `svg` with the cask you want from the catalog below.
 
 ```sh
 brew tap kjanat/tap
@@ -12,15 +12,27 @@ brew trust --cask kjanat/tap/svg
 brew install --cask kjanat/tap/svg
 ```
 
-| Cask          | What it installs                                        |
-| ------------- | ------------------------------------------------------- |
-| [actionlint]  | GitHub Actions workflow linter                          |
-| [shellcheck]  | Upstream shell script linter and shell completions      |
-| [runner]      | Task runner with `runner`, `run`, and shell completions |
-| [svg]         | `svg-language-server`, `svg-format`, and `svg-lint`     |
-| [rshellcheck] | Rust ShellCheck port, installed alongside `shellcheck`  |
-| [envctl]      | Environment file CLI, manual, and shell integrations    |
-| [fsql]        | SQL CLI for querying and changing files                 |
+### Linting
+
+| Cask          | What it installs                                       |
+| ------------- | ------------------------------------------------------ |
+| [actionlint]  | GitHub Actions workflow linter                         |
+| [shellcheck]  | Upstream shell script linter and shell completions     |
+| [rshellcheck] | Rust ShellCheck port, installed alongside `shellcheck` |
+
+### Automation
+
+| Cask     | What it installs                                        |
+| -------- | ------------------------------------------------------- |
+| [runner] | Task runner with `runner`, `run`, and shell completions |
+| [envctl] | Environment file CLI, manual, and shell integrations    |
+
+### File tooling
+
+| Cask   | What it installs                                    |
+| ------ | --------------------------------------------------- |
+| [svg]  | `svg-language-server`, `svg-format`, and `svg-lint` |
+| [fsql] | SQL CLI for querying and changing files             |
 
 ## Setup and upgrades
 
@@ -31,7 +43,7 @@ brew install --cask kjanat/tap/svg
 
 ## Help and contributions
 
-Use the project links in the table for help with a tool. Report installation or packaging issues in the [tap’s issue tracker]. To change a cask or its automation, see [Contributing](CONTRIBUTING.md).
+Use the project links in the catalog for help with a tool. Report installation or packaging issues in the [tap’s issue tracker]. To change a cask or its automation, see [Contributing](CONTRIBUTING.md).
 
 [actionlint]: https://github.com/kjanat/actionlint
 [shellcheck]: https://github.com/koalaman/shellcheck
