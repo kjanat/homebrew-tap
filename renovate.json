@@ -41,13 +41,12 @@
 				"/^Casks/rshellcheck\\.rb$/"
 			],
 			"matchStrings": [
-				"(?<indentation>[ \\t]+)version \"(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\""
+				"(?<indentation>[ \\t]+)version \"(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)\"\\r?\\n[ \\t]+sha256 \"(?<currentDigest>[a-f0-9]{64})\"\\r?\\n[ \\t]+url \"https://github\\.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#\\{version\\}/rshellcheck-#\\{version\\}-(?<target>[a-z0-9_-]+)\\.tar\\.gz\""
 			],
 			"depNameTemplate": "kjanat/shellcheck-rs",
-			"datasourceTemplate": "github-release-attachments",
-			"versioningTemplate": "regex:^rshellcheck-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
-			"currentValueTemplate": "rshellcheck-v{{{version}}}",
-			"autoReplaceStringTemplate": "{{{indentation}}}version \"{{{replace '^rshellcheck-v' '' newValue}}}\"\n{{{indentation}}}sha256 \"{{{newDigest}}}\""
+			"datasourceTemplate": "custom.rshellcheck",
+			"versioningTemplate": "semver",
+			"packageNameTemplate": "{{{target}}}"
 		},
 		{
 			"customType": "regex",
@@ -139,12 +138,12 @@
 			"matchManagers": [
 				"custom.regex"
 			],
-			"matchPackageNames": [
-				"kjanat/shellcheck-rs"
-			],
 			"groupName": "rshellcheck cask",
 			"minimumGroupSize": 4,
-			"automerge": false
+			"automerge": false,
+			"matchDatasources": [
+				"custom.rshellcheck"
+			]
 		},
 		{
 			"matchManagers": [
@@ -179,5 +178,13 @@
 			"minimumGroupSize": 8,
 			"automerge": false
 		}
-	]
+	],
+	"customDatasources": {
+		"rshellcheck": {
+			"defaultRegistryUrlTemplate": "https://api.github.com/repos/kjanat/shellcheck-rs/releases?per_page=100",
+			"transformTemplates": [
+				"($target := \"{{{packageName}}}\"; {\"sourceUrl\": \"https://github.com/kjanat/shellcheck-rs\", \"releases\": [ $[draft = false and prerelease = false and $contains(tag_name, /^rshellcheck-v[0-9]+\\.[0-9]+\\.[0-9]+$/)].($v := $substringAfter(tag_name, \"rshellcheck-v\"); $prefix := \"rshellcheck-\" & $v & \"-\"; $targets := [\"aarch64-apple-darwin\", \"x86_64-apple-darwin\", \"aarch64-unknown-linux-musl\", \"x86_64-unknown-linux-musl\"]; $names := $map($targets, function($t) { $prefix & $t & \".tar.gz\" }); $available := assets[name in $names and $contains(digest, /^sha256:[a-f0-9]{64}$/)]; $asset := $available[name = ($prefix & $target & \".tar.gz\")][0]; $count($available) = $count($targets) and $exists($asset) ? {\"version\": $v, \"digest\": $substringAfter($asset.digest, \"sha256:\"), \"releaseTimestamp\": published_at} : ()) ]})"
+			]
+		}
+	}
 }
