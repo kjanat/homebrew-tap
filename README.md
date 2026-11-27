@@ -18,7 +18,7 @@ brew install --cask kjanat/tap/svg
 | [shellcheck]  | Upstream shell script linter and shell completions      |
 | [rshellcheck] | Rust port of ShellCheck                                 |
 | [runner]      | Task runner with `runner`, `run`, and shell completions |
-| [envctl]      | Environment file CLI, manual, and shell integrations    |
+| [envctl]      | Read and edit environment files                         |
 | [svg]         | `svg-language-server`, `svg-format`, and `svg-lint`     |
 | [fsql]        | SQL CLI for querying and changing files                 |
 
