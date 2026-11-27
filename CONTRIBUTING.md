@@ -2,7 +2,7 @@
 
 Start in [`Casks/`](Casks/) for install behavior. For a bug in one of the binaries, use its upstream project from the [README](README.md#install-a-tool).
 
-## Find the right file
+## Source files
 
 | Change                               | Where to make it                                                                    |
 | ------------------------------------ | ----------------------------------------------------------------------------------- |
