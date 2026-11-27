@@ -12,15 +12,15 @@ brew trust --cask kjanat/tap/svg
 brew install --cask kjanat/tap/svg
 ```
 
-| Cask          | What it installs                                        |
+| Cask          | Use it to                                               |
 | ------------- | ------------------------------------------------------- |
-| [actionlint]  | GitHub Actions workflow linter                          |
-| [shellcheck]  | Upstream shell script linter and shell completions      |
-| [rshellcheck] | Rust port of ShellCheck                                 |
-| [runner]      | Task runner with `runner`, `run`, and shell completions |
-| [envctl]      | Read and edit environment files                         |
-| [svg]         | `svg-language-server`, `svg-format`, and `svg-lint`     |
-| [fsql]        | SQL CLI for querying and changing files                 |
+| [actionlint]  | Check GitHub Actions workflows for errors               |
+| [shellcheck]  | Find bugs and portability issues in shell scripts       |
+| [rshellcheck] | Lint shell scripts with a Rust port of ShellCheck       |
+| [runner]      | Define and run project tasks                            |
+| [envctl]      | Read and edit variables in environment files            |
+| [svg]         | Get editor support for SVG and format or lint SVG files |
+| [fsql]        | Find and modify files with SQL                          |
 
 ## Setup and upgrades
 
