@@ -10,6 +10,7 @@ on:
       .github/scripts/check-shellcheck.ts,
       .github/scripts/check-release-casks.ts,
       .github/scripts/check-cask-install.sh,
+      .github/scripts/plan-cask-checks.py,
       .github/workflows/casks.yml,
     ]
   pull_request:
@@ -17,8 +18,24 @@ on:
   workflow_dispatch:
 permissions: { contents: read }
 jobs:
-  shellcheck:
-    name: ShellCheck release integrity
+  plan:
+    name: Plan cask checks
+    runs-on: ubuntu-latest
+    outputs:
+      install: ${{ steps.plan.outputs.install }}
+      integrity: ${{ steps.plan.outputs.integrity }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - id: plan
+        run: python3 .github/scripts/plan-cask-checks.py
+  integrity:
+    name: Release integrity (${{ matrix.cask }})
+    needs: plan
+    if: fromJSON(needs.plan.outputs.integrity).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.integrity) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,24 +43,31 @@ jobs:
         with: { persist-credentials: false }
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with: { deno-version: v2.x }
-      - run: ruby -c Casks/shellcheck.rb
-      - name: Verify all release checksums and completion versions
+      - if: matrix.cask == 'shellcheck'
+        run: ruby -c Casks/shellcheck.rb
+      - name: Verify ShellCheck release checksums and completion versions
+        if: matrix.cask == 'shellcheck'
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
+        if: matrix.cask == 'shellcheck'
         run: python3 completions/shellcheck/tests/test_bash.py
       - name: Verify tool release assets and bundled manuals
-        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
+        if: matrix.cask != 'shellcheck'
+        env: { CASK: "${{ matrix.cask }}" }
+        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts "$CASK"
   macos:
-    name: Cask installs (${{ matrix.runner }})
+    name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
+    needs: plan
+    if: fromJSON(needs.plan.outputs.install).include[0] != null
     strategy:
       fail-fast: false
-      matrix:
-        runner: [macos-26, macos-26-intel]
+      matrix: ${{ fromJSON(needs.plan.outputs.install) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     env:
       HOMEBREW_NO_ANALYTICS: 1
       HOMEBREW_NO_ENV_HINTS: 1
+      BASH_SOURCE_SHA256: 0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
@@ -55,19 +79,41 @@ jobs:
           uname -m
           brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
+      - name: Trust the cask under test
+        env: { CASK: "${{ matrix.cask }}" }
+        run: brew trust --cask "kjanat/tap/$CASK"
+      - name: Set the native Bash path
+        if: matrix.cask == 'envctl'
+        run: echo "CASK_TEST_BASH=$RUNNER_TEMP/cask-test-bin/bash" >> "$GITHUB_ENV"
+      - name: Restore cached Bash for envctl completion checks
+        if: matrix.cask == 'envctl'
+        id: bash-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with: &BashCache
+          path: ${{ env.CASK_TEST_BASH }}
+          key: cask-test-bash-v1-${{ matrix.runner }}-${{ runner.arch }}-${{ env.BASH_SOURCE_SHA256 }}
       - name: Build Bash for envctl completion checks
+        if: matrix.cask == 'envctl' && steps.bash-cache.outputs.cache-hit != 'true'
         run: |
           cd "$RUNNER_TEMP"
           curl --fail --silent --show-error --location --retry 3 \
             https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz --output bash-5.3.tar.gz
-          echo '0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba  bash-5.3.tar.gz' | shasum -a 256 --check -
+          printf '%s  %s\n' "$BASH_SOURCE_SHA256" bash-5.3.tar.gz | shasum -a 256 --check -
           tar -xzf bash-5.3.tar.gz
           cd bash-5.3
           ./configure --disable-nls --without-installed-readline
           make -j"$(sysctl -n hw.ncpu)" bash
-          ./bash --version
-      - name: Install, reinstall, and uninstall all casks
+          mkdir -p "$(dirname "$CASK_TEST_BASH")"
+          install -m 755 bash "$CASK_TEST_BASH"
+      - name: Verify native Bash
+        if: matrix.cask == 'envctl'
+        run: '"$CASK_TEST_BASH" --version'
+      - name: Save native Bash
+        if: matrix.cask == 'envctl' && steps.bash-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with: *BashCache
+      - name: Install, reinstall, and uninstall the cask
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
-          CASK_TEST_BASH: ${{ runner.temp }}/bash-5.3/bash
-        run: bash .github/scripts/check-cask-install.sh
+          CASK: ${{ matrix.cask }}
+        run: bash .github/scripts/check-cask-install.sh "$CASK"
