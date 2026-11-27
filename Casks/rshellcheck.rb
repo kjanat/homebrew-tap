@@ -39,13 +39,23 @@ cask "rshellcheck" do
   end
 
   on_macos do
-    binary "rshellcheck-#{version}-#{arch}-apple-darwin/rshellcheck"
+    executable = "rshellcheck-#{version}-#{arch}-apple-darwin/rshellcheck"
+    binary executable
+    generate_completions_from_executable executable, "--generate-completions",
+                                         shells: [:bash, :zsh, :fish, :pwsh]
   end
   on_linux do
-    binary "rshellcheck-#{version}-#{arch}-unknown-linux-musl/rshellcheck"
+    executable = "rshellcheck-#{version}-#{arch}-unknown-linux-musl/rshellcheck"
+    binary executable
+    generate_completions_from_executable executable, "--generate-completions",
+                                         shells: [:bash, :zsh, :fish, :pwsh]
   end
 
   preflight_steps do
+    mkdir_p "etc/bash_completion.d", base: :homebrew_prefix
+    mkdir_p "share/zsh/site-functions", base: :homebrew_prefix
+    mkdir_p "share/fish/vendor_completions.d", base: :homebrew_prefix
+    mkdir_p "share/pwsh/completions", base: :homebrew_prefix
     on_macos do
       run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{staged_path}}"]
     end

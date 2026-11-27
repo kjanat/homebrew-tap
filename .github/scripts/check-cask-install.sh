@@ -63,6 +63,13 @@ check_install() {
 		"$prefix/bin/svg-format" --check "$RUNNER_TEMP/smoke.svg"
 		"$prefix/bin/svg-lint" "$RUNNER_TEMP/smoke.svg"
 	elif [[ $cask == rshellcheck ]]; then
+		for shell in bash zsh fish powershell; do
+			"$prefix/bin/rshellcheck" --generate-completions "$shell" >"$RUNNER_TEMP/rshellcheck-$shell"
+		done
+		cmp "$RUNNER_TEMP/rshellcheck-bash" "$prefix/etc/bash_completion.d/rshellcheck"
+		cmp "$RUNNER_TEMP/rshellcheck-zsh" "$prefix/share/zsh/site-functions/_rshellcheck"
+		cmp "$RUNNER_TEMP/rshellcheck-fish" "$prefix/share/fish/vendor_completions.d/rshellcheck.fish"
+		cmp "$RUNNER_TEMP/rshellcheck-powershell" "$prefix/share/pwsh/completions/_rshellcheck.ps1"
 		printf '#!/bin/sh\necho "$HOME"\n' | "$prefix/bin/rshellcheck" --norc -
 	elif [[ $cask == fsql ]]; then
 		local fixture journal_id
@@ -146,7 +153,7 @@ for cask in "$@"; do
 	for binary in "${binaries[@]}"; do
 		artifacts+=("bin/$binary")
 	done
-	if [[ $cask == actionlint || $cask == shellcheck || $cask == runner || $cask == envctl ]]; then
+	if [[ $cask == actionlint || $cask == shellcheck || $cask == runner || $cask == envctl || $cask == rshellcheck ]]; then
 		artifacts+=(
 			"etc/bash_completion.d/$cask"
 			"share/zsh/site-functions/_$cask"
@@ -157,8 +164,8 @@ for cask in "$@"; do
 		artifacts+=("share/man/man1/actionlint.1" "share/pwsh/completions/_actionlint.ps1")
 	elif [[ $cask == shellcheck ]]; then
 		artifacts+=("share/powershell/completions/shellcheck.ps1")
-	elif [[ $cask == runner ]]; then
-		artifacts+=("share/pwsh/completions/_runner.ps1")
+	elif [[ $cask == runner || $cask == rshellcheck ]]; then
+		artifacts+=("share/pwsh/completions/_$cask.ps1")
 	elif [[ $cask == envctl ]]; then
 		artifacts+=("share/man/man1/envctl.1" "share/pwsh/completions/_envctl.ps1" "share/powershell/Modules/envctl/envctl.psm1")
 	fi

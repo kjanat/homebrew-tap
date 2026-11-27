@@ -16,7 +16,7 @@ brew install --cask kjanat/tap/svg
 | ------------- | ------------------------------------------------------- | ----------------------------------------------- | :---------: |
 | [actionlint]  | Check GitHub Actions workflows for errors               | `actionlint`                                    |     ✅      |
 | [shellcheck]  | Find bugs and portability issues in shell scripts       | `shellcheck`                                    |     ✅      |
-| [rshellcheck] | Lint shell scripts with a Rust port of ShellCheck       | `rshellcheck`                                   |     ❌      |
+| [rshellcheck] | Lint shell scripts with a Rust port of ShellCheck       | `rshellcheck`                                   |     ✅      |
 | [runner]      | Define and run project tasks                            | `runner`, `run`                                 |     ✅      |
 | [envctl]      | Read and edit variables in environment files            | `envctl`                                        |     ✅      |
 | [svg]         | Get editor support for SVG and format or lint SVG files | `svg-language-server`, `svg-format`, `svg-lint` |     ❌      |
