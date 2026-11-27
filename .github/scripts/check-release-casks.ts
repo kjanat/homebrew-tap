@@ -29,7 +29,12 @@ const rustTargets = [
 	'x86_64-unknown-linux-musl',
 ];
 
-for (const pkg of packages) {
+const selected = Deno.args.length ? packages.filter((pkg) => Deno.args.includes(pkg.name)) : packages;
+if (Deno.args.some((name) => !packages.some((pkg) => pkg.name === name))) {
+	throw new Error(`Unknown release cask: ${Deno.args.join(', ')}`);
+}
+
+for (const pkg of selected) {
 	const targets = pkg.targets ?? rustTargets;
 	const source = await Deno.readTextFile(`Casks/${pkg.name}.rb`);
 	const pattern = /version "([0-9]+\.[0-9]+\.[0-9]+)"\r?\n\s+sha256 "([a-f0-9]{64})"\r?\n\s+url "([^"]+)"/g;

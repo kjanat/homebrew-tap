@@ -122,7 +122,11 @@ check_install() {
 	fi
 }
 
-for cask in actionlint shellcheck runner svg rshellcheck envctl fsql; do
+if (($# == 0)); then
+	set -- actionlint shellcheck runner svg rshellcheck envctl fsql
+fi
+
+for cask in "$@"; do
 	# Hosted runners may already have the core formula linked into the same prefix.
 	if brew list --formula "$cask" >/dev/null 2>&1; then
 		brew unlink "$cask"
