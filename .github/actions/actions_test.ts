@@ -288,11 +288,11 @@ Deno.test('replace-in-files rejects an empty search without writing', async () =
 });
 
 Deno.test('replace-in-files parses newline separated paths', async () => {
-	const result = await runAction('replace-in-files', { files: 'a\n  b  \n\nc\n', search: 'x', replace: 'y' }, {
-		a: 'x',
-		b: 'x',
-		c: 'x',
-	});
+	const result = await runAction(
+		'replace-in-files',
+		{ files: 'a\n  b  \n\nc\n', search: 'x', replace: 'y' },
+		{ a: 'x', b: 'x', c: 'x' },
+	);
 	assertEquals(result.success, true, result.stderr);
 	assertEquals(result.files, { a: 'y', b: 'y', c: 'y' });
 	assertEquals(JSON.parse(result.outputs.replacements), [

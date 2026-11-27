@@ -1,0 +1,5 @@
+extends           = "https://cdn.jsdelivr.net/gh/kjanat/kjanat@master/configs/dprint.remote.json"
+exec.playWithFire = true
+
+[shfmt]
+associations = ["bin/actionlint"]

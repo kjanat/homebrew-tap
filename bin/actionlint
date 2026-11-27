@@ -1,0 +1,14 @@
+#!/bin/sh
+
+ACTIONLINT_SHA="${ACTIONLINT_SHA:-012540dc1978b569525e00a136a9617763de3455}"
+
+if ! command -v npx >/dev/null 2>&1; then
+	printf '%s: %s not found in PATH\n' actionlint npx >&2
+	exit 127
+fi
+
+exec npx -y --allow-remote=all "https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@${ACTIONLINT_SHA}" check -v \
+	--strict --experimental \
+	-o github -o pretty \
+	--allow-config-processes \
+	"$@"
