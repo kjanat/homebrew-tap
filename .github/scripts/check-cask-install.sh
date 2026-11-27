@@ -8,6 +8,29 @@ cask_version() {
 	brew info --cask --json=v2 "kjanat/tap/$1" | ruby -rjson -e 'puts JSON.parse(STDIN.read).fetch("casks").first.fetch("version")'
 }
 
+add_completion_paths() {
+	local command=$1
+	artifacts+=(
+		"etc/bash_completion.d/$command"
+		"share/zsh/site-functions/_$command"
+		"share/fish/vendor_completions.d/$command.fish"
+	)
+}
+
+check_generated_completions() {
+	local command=$1 generator=$2 powershell=$3 first_artifact=$4
+	local executable shell expected
+	local index=$first_artifact
+	# Some generators embed the executable path in the generated script.
+	executable=$(ruby -e 'puts File.realpath(ARGV.fetch(0))' "$prefix/bin/$command")
+	for shell in bash zsh fish "$powershell"; do
+		expected="$RUNNER_TEMP/$command-$shell"
+		"$executable" "$generator" "$shell" >"$expected"
+		cmp "$expected" "$prefix/${artifacts[index]}"
+		index=$((index + 1))
+	done
+}
+
 check_install() {
 	local cask=$1
 	local version
@@ -20,6 +43,10 @@ check_install() {
 		test -s "$prefix/$path"
 	done
 
+	if [[ -n $completion_generator ]]; then
+		check_generated_completions "$cask" "$completion_generator" "$completion_powershell" "$first_completion_artifact"
+	fi
+
 	if [[ $cask == shellcheck ]]; then
 		cmp completions/shellcheck/bash/shellcheck "$prefix/etc/bash_completion.d/shellcheck"
 		cmp completions/shellcheck/zsh/_shellcheck "$prefix/share/zsh/site-functions/_shellcheck"
@@ -27,25 +54,9 @@ check_install() {
 		cmp completions/shellcheck/powershell/shellcheck.ps1 "$prefix/share/powershell/completions/shellcheck.ps1"
 		printf '#!/bin/sh\necho "$HOME"\n' | "$prefix/bin/shellcheck" -
 	elif [[ $cask == actionlint ]]; then
-		for shell in bash zsh fish pwsh; do
-			"$prefix/bin/actionlint" -completion "$shell" >"$RUNNER_TEMP/actionlint-$shell"
-		done
-		cmp "$RUNNER_TEMP/actionlint-bash" "$prefix/etc/bash_completion.d/actionlint"
-		cmp "$RUNNER_TEMP/actionlint-zsh" "$prefix/share/zsh/site-functions/_actionlint"
-		cmp "$RUNNER_TEMP/actionlint-fish" "$prefix/share/fish/vendor_completions.d/actionlint.fish"
-		cmp "$RUNNER_TEMP/actionlint-pwsh" "$prefix/share/pwsh/completions/_actionlint.ps1"
 		printf 'name: Smoke\non: push\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n' \
 			| "$prefix/bin/actionlint" -shellcheck= -pyflakes= -
 	elif [[ $cask == runner ]]; then
-		local runner_executable
-		runner_executable=$(ruby -e 'puts File.realpath(ARGV.fetch(0))' "$prefix/bin/runner")
-		for shell in bash zsh fish pwsh; do
-			"$runner_executable" completions "$shell" >"$RUNNER_TEMP/runner-$shell"
-		done
-		cmp "$RUNNER_TEMP/runner-bash" "$prefix/etc/bash_completion.d/runner"
-		cmp "$RUNNER_TEMP/runner-zsh" "$prefix/share/zsh/site-functions/_runner"
-		cmp "$RUNNER_TEMP/runner-fish" "$prefix/share/fish/vendor_completions.d/runner.fish"
-		cmp "$RUNNER_TEMP/runner-pwsh" "$prefix/share/pwsh/completions/_runner.ps1"
 		bash -ec '
           source "$1"
           complete -p runner run
@@ -86,13 +97,6 @@ check_install() {
 		test "$(cat "$fixture/files/probe.txt")" = sample
 		test ! -e "$fixture/files/moved.txt"
 	elif [[ $cask == envctl ]]; then
-		for shell in bash zsh fish pwsh; do
-			"$prefix/bin/envctl" completions "$shell" >"$RUNNER_TEMP/envctl-$shell"
-		done
-		cmp "$RUNNER_TEMP/envctl-bash" "$prefix/etc/bash_completion.d/envctl"
-		cmp "$RUNNER_TEMP/envctl-zsh" "$prefix/share/zsh/site-functions/_envctl"
-		cmp "$RUNNER_TEMP/envctl-fish" "$prefix/share/fish/vendor_completions.d/envctl.fish"
-		cmp "$RUNNER_TEMP/envctl-pwsh" "$prefix/share/pwsh/completions/_envctl.ps1"
 		cmp manpages/envctl/envctl.1 "$prefix/share/man/man1/envctl.1"
 		MANPATH="$prefix/share/man" MANPAGER=cat man envctl >"$RUNNER_TEMP/envctl-man.txt"
 		grep -F 'ENVCTL' "$RUNNER_TEMP/envctl-man.txt"
@@ -146,33 +150,40 @@ for cask in "$@"; do
 	for binary in "${binaries[@]}"; do
 		artifacts+=("bin/$binary")
 	done
-	if [[ $cask == actionlint || $cask == shellcheck || $cask == runner || $cask == envctl ]]; then
-		artifacts+=(
-			"etc/bash_completion.d/$cask"
-			"share/zsh/site-functions/_$cask"
-			"share/fish/vendor_completions.d/$cask.fish"
-		)
-	fi
-	if [[ $cask == actionlint ]]; then
-		artifacts+=("share/man/man1/actionlint.1" "share/pwsh/completions/_actionlint.ps1")
-	elif [[ $cask == shellcheck ]]; then
-		artifacts+=("share/powershell/completions/shellcheck.ps1")
-	elif [[ $cask == runner ]]; then
-		artifacts+=("share/pwsh/completions/_runner.ps1")
-	elif [[ $cask == envctl ]]; then
-		artifacts+=("share/man/man1/envctl.1" "share/pwsh/completions/_envctl.ps1" "share/powershell/Modules/envctl/envctl.psm1")
+	completion_generator=
+	completion_powershell=pwsh
+	case $cask in
+		actionlint) completion_generator=-completion ;;
+		runner | envctl) completion_generator=completions ;;
+		rshellcheck)
+			completion_generator=--generate-completions
+			completion_powershell=powershell
+			;;
+	esac
+	if [[ -n $completion_generator ]]; then
+		first_completion_artifact=${#artifacts[@]}
+		add_completion_paths "$cask"
+		artifacts+=("share/pwsh/completions/_$cask.ps1")
 	fi
 
-	if [[ $cask == svg ]] && ruby -e 'exit Gem::Version.new(ARGV.fetch(0)) > Gem::Version.new("0.5.2") ? 0 : 1' "$(cask_version "$cask")"; then
-		for binary in "${binaries[@]}"; do
-			artifacts+=(
-				"etc/bash_completion.d/$binary"
-				"share/zsh/site-functions/_$binary"
-				"share/fish/vendor_completions.d/$binary.fish"
-			)
-		done
-		artifacts+=("share/pwsh/completions/_svg.ps1")
-	fi
+	case $cask in
+		actionlint) artifacts+=("share/man/man1/actionlint.1") ;;
+		shellcheck)
+			add_completion_paths "$cask"
+			artifacts+=("share/powershell/completions/shellcheck.ps1")
+			;;
+		envctl)
+			artifacts+=("share/man/man1/envctl.1" "share/powershell/Modules/envctl/envctl.psm1")
+			;;
+		svg)
+			if ruby -e 'exit Gem::Version.new(ARGV.fetch(0)) > Gem::Version.new("0.5.2") ? 0 : 1' "$(cask_version "$cask")"; then
+				for binary in "${binaries[@]}"; do
+					add_completion_paths "$binary"
+				done
+				artifacts+=("share/pwsh/completions/_svg.ps1")
+			fi
+			;;
+	esac
 
 	brew install --cask "kjanat/tap/$cask"
 	check_install "$cask"

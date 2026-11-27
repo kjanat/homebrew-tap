@@ -36,20 +36,25 @@ cask "envctl" do
   end
 
   container type: :naked
+
   binary "envctl"
   manpage "envctl.1"
   pwsh_completion "_envctl.ps1"
-  artifact "envctl.psm1", target: "#{HOMEBREW_PREFIX}/share/powershell/Modules/envctl/envctl.psm1"
   generate_completions_from_executable "envctl", "completions",
                                        base_name: "envctl",
                                        shells:    [:bash, :zsh, :fish]
+  artifact "envctl.psm1", target: "#{HOMEBREW_PREFIX}/share/powershell/Modules/envctl/envctl.psm1"
 
   # Releases contain only the binary; CI checks this manual against the release tag.
-  manual = (Tap.fetch("kjanat/tap").path/"manpages/envctl/envctl.1").read
+  preflight_steps([{
+    type:      "write",
+    path:      { base: "staged_path", path: "envctl.1" },
+    content:   (Tap.fetch("kjanat/tap").path/"manpages/envctl/envctl.1").read,
+    overwrite: true,
+  }])
   preflight_steps do
     move "envctl-*", "envctl", source_glob: true
     set_permissions "envctl", "755", recursive: false
-    write_file "envctl.1", manual
     mkdir_p "etc/bash_completion.d", base: :homebrew_prefix
     mkdir_p "share/zsh/site-functions", base: :homebrew_prefix
     mkdir_p "share/fish/vendor_completions.d", base: :homebrew_prefix
@@ -61,6 +66,8 @@ cask "envctl" do
     # Homebrew's completion generator passes "powershell", but envctl requires "pwsh".
     run "{{staged_path}}/envctl", args: ["completions", "pwsh"], stdout_path: "_envctl.ps1"
   end
+
+  zap :not_required
 
   caveats <<~EOS
     Bash completions require Bash 4 or newer. macOS includes Bash 3.2.
@@ -74,6 +81,4 @@ cask "envctl" do
     Load the generated PowerShell cmdlets with:
       Import-Module (Join-Path (brew --prefix) 'share/powershell/Modules/envctl/envctl.psm1')
   EOS
-
-  zap :not_required
 end

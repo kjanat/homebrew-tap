@@ -18,8 +18,33 @@ on:
   workflow_dispatch:
 permissions: { contents: read }
 jobs:
+  lint:
+    name: Cask lint
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    env:
+      HOMEBREW_DEV_CMD_RUN: 1
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Check cask syntax and style
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          tap_dir=$(brew --repository kjanat/tap)
+          mkdir -p "$(dirname "$tap_dir")"
+          ln -s "$GITHUB_WORKSPACE" "$tap_dir"
+          files=("$tap_dir"/Casks/*.rb)
+          for file in "${files[@]}"; do
+            printf 'Casks/%s: ' "${file##*/}"
+            ruby -c "$file"
+          done
+          # Homebrew drops BUNDLE_* environment variables before starting Ruby.
+          brew ruby -e 'require "bundler"; Bundler.settings.set_global("ignore_funding_requests", true)'
+          brew style "${files[@]}"
   plan:
     name: Plan cask checks
+    needs: lint
     runs-on: ubuntu-latest
     outputs:
       install: ${{ steps.plan.outputs.install }}
@@ -43,8 +68,6 @@ jobs:
         with: { persist-credentials: false }
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with: { deno-version: v2.x }
-      - if: matrix.cask == 'shellcheck'
-        run: ruby -c Casks/shellcheck.rb
       - name: Verify ShellCheck release checksums and completion versions
         if: matrix.cask == 'shellcheck'
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
