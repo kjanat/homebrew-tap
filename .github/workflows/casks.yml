@@ -23,7 +23,6 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
-      BUNDLE_IGNORE_FUNDING_REQUESTS: 1
       HOMEBREW_DEV_CMD_RUN: 1
       HOMEBREW_NO_AUTO_UPDATE: 1
     steps:
@@ -39,6 +38,8 @@ jobs:
           for file in "${files[@]}"; do
             ruby -c "$file"
           done
+          # Homebrew drops BUNDLE_* environment variables before starting Ruby.
+          brew ruby -e 'require "bundler"; Bundler.settings.set_global("ignore_funding_requests", true)'
           brew style "${files[@]}"
   plan:
     name: Plan cask checks
