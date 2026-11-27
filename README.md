@@ -24,7 +24,6 @@ brew install --cask kjanat/tap/svg
 
 ## Setup and upgrades
 
-- **Shell setup.** Run `brew info --cask kjanat/tap/envctl` for Bash and PowerShell setup. Its Bash completions require Bash 4 or newer.
 - **ShellCheck with actionlint.** Actionlint uses ShellCheck when it finds it on `PATH`. If the core `shellcheck` formula is installed, uninstall it before installing the tap’s cask to avoid a binary conflict.
 - **Completion-only updates.** After `brew update`, run `brew reinstall --cask kjanat/tap/shellcheck` to pick up completion changes at the same ShellCheck version.
 - **fsql on Linux.** The release binaries require glibc 2.34 or newer.
