@@ -5,25 +5,25 @@ cask "rshellcheck" do
 
   on_macos do
     on_arm do
-      version "1.0.0"
-      sha256 "c6030ee2c47b3318aaf59c9a788ad38cb6be873b2cea8114f50ec77ad0391cc2"
+      version "1.2.0"
+      sha256 "fe28d158e3b14101aa2e00f1d389093cf7b1873a710b5304a655df88c5a392bc"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-aarch64-apple-darwin.tar.gz"
     end
     on_intel do
-      version "1.0.0"
-      sha256 "5a58444326faba435191f424e2aed1a7cc0038a3530e29bcc4e1560bcad2cde0"
+      version "1.2.0"
+      sha256 "73a6caad08fa2ca8d93cc911d80bb77380d711ccc0c03c588af2cc7b97fb0861"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-x86_64-apple-darwin.tar.gz"
     end
   end
   on_linux do
     on_arm do
-      version "1.0.0"
-      sha256 "7cc44c1ad4b67e61a3489f3a45f4100feef66b31a5b35926acb3325d4fcf693b"
+      version "1.2.0"
+      sha256 "ff393d9d353022dacf183971a9ef63a322ed18a6136f7a369309effb6b38b037"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-aarch64-unknown-linux-musl.tar.gz"
     end
     on_intel do
-      version "1.0.0"
-      sha256 "c1c305d318e174f0e322c9bf93a40bede355bc102eedfcde0792a670e01ef986"
+      version "1.2.0"
+      sha256 "e785cb702d883a9dcafd694fd3c0bd5e0591f0a4b2f0e880dab5bd8ee71355ac"
       url "https://github.com/kjanat/shellcheck-rs/releases/download/rshellcheck-v#{version}/rshellcheck-#{version}-x86_64-unknown-linux-musl.tar.gz"
     end
   end
