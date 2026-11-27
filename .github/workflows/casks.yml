@@ -21,6 +21,7 @@ jobs:
   plan:
     name: Plan cask checks
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     outputs:
       install: ${{ steps.plan.outputs.install }}
       integrity: ${{ steps.plan.outputs.integrity }}
@@ -54,7 +55,7 @@ jobs:
       - name: Verify tool release assets and bundled manuals
         if: matrix.cask != 'shellcheck'
         env: { CASK: "${{ matrix.cask }}" }
-        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts "$CASK"
+        run: deno run --allow-env=CASK --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
     needs: plan
