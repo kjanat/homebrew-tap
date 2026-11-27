@@ -29,6 +29,32 @@ jobs:
         with: { fetch-depth: 0, persist-credentials: false }
       - id: plan
         run: python3 .github/scripts/plan-cask-checks.py
+  lint:
+    name: Cask lint
+    needs: plan
+    if: fromJSON(needs.plan.outputs.install).include[0] != null
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with: { persist-credentials: false }
+      - name: Check cask syntax and style
+        env:
+          INSTALL_MATRIX: ${{ needs.plan.outputs.install }}
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
+          tap_dir=$(brew --repository kjanat/tap)
+          mapfile -t casks < <(jq -r '[.include[].cask] | unique[]' <<< "$INSTALL_MATRIX")
+          files=()
+          for cask in "${casks[@]}"; do
+            file="$tap_dir/Casks/$cask.rb"
+            ruby -c "$file"
+            files+=("$file")
+          done
+          brew style "${files[@]}"
   integrity:
     name: Release integrity (${{ matrix.cask }})
     needs: plan
@@ -43,8 +69,6 @@ jobs:
         with: { persist-credentials: false }
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with: { deno-version: v2.x }
-      - if: matrix.cask == 'shellcheck'
-        run: ruby -c Casks/shellcheck.rb
       - name: Verify ShellCheck release checksums and completion versions
         if: matrix.cask == 'shellcheck'
         run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
