@@ -36,6 +36,7 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" "$tap_dir"
           files=("$tap_dir"/Casks/*.rb)
           for file in "${files[@]}"; do
+            printf 'Casks/%s: ' "${file##*/}"
             ruby -c "$file"
           done
           # Homebrew drops BUNDLE_* environment variables before starting Ruby.
