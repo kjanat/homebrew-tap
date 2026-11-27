@@ -44,6 +44,7 @@ jobs:
     env:
       HOMEBREW_NO_ANALYTICS: 1
       HOMEBREW_NO_ENV_HINTS: 1
+      BASH_SOURCE_SHA256: 0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
@@ -55,19 +56,30 @@ jobs:
           uname -m
           brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
+      - name: Set the native Bash path
+        run: echo "CASK_TEST_BASH=$RUNNER_TEMP/cask-test-bin/bash" >> "$GITHUB_ENV"
+      - name: Cache Bash for envctl completion checks
+        id: bash-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CASK_TEST_BASH }}
+          key: cask-test-bash-v1-${{ matrix.runner }}-${{ runner.arch }}-${{ env.BASH_SOURCE_SHA256 }}
       - name: Build Bash for envctl completion checks
+        if: steps.bash-cache.outputs.cache-hit != 'true'
         run: |
           cd "$RUNNER_TEMP"
           curl --fail --silent --show-error --location --retry 3 \
             https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz --output bash-5.3.tar.gz
-          echo '0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba  bash-5.3.tar.gz' | shasum -a 256 --check -
+          printf '%s  %s\n' "$BASH_SOURCE_SHA256" bash-5.3.tar.gz | shasum -a 256 --check -
           tar -xzf bash-5.3.tar.gz
           cd bash-5.3
           ./configure --disable-nls --without-installed-readline
           make -j"$(sysctl -n hw.ncpu)" bash
-          ./bash --version
+          mkdir -p "$(dirname "$CASK_TEST_BASH")"
+          install -m 755 bash "$CASK_TEST_BASH"
+      - name: Verify native Bash
+        run: '"$CASK_TEST_BASH" --version'
       - name: Install, reinstall, and uninstall all casks
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
-          CASK_TEST_BASH: ${{ runner.temp }}/bash-5.3/bash
         run: bash .github/scripts/check-cask-install.sh
