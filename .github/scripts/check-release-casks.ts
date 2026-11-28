@@ -1,3 +1,5 @@
+import { arg, cli, CLIError, command } from 'jsr:@kjanat/dreamcli@^5.7.0';
+
 const packages = [
 	{
 		name: 'fsql',
@@ -20,8 +22,12 @@ const packages = [
 		tagPrefix: 'v',
 		assetTemplate: 'envctl-{target}',
 		targets: ['darwin-arm64', 'darwin-amd64', 'linux-arm64', 'linux-amd64'],
+		vendored: [
+			{ local: 'manpages/envctl/envctl.1', upstream: 'man/envctl.1' },
+			{ local: 'manpages/envctl/LICENSE', upstream: 'LICENSE' },
+		],
 	},
-];
+] as const;
 const rustTargets = [
 	'aarch64-apple-darwin',
 	'x86_64-apple-darwin',
@@ -29,56 +35,118 @@ const rustTargets = [
 	'x86_64-unknown-linux-musl',
 ];
 
-const selected = Deno.args.length ? packages.filter((pkg) => Deno.args.includes(pkg.name)) : packages;
-if (Deno.args.some((name) => !packages.some((pkg) => pkg.name === name))) {
-	throw new Error(`Unknown release cask: ${Deno.args.join(', ')}`);
-}
+type ReleasePackage = (typeof packages)[number];
 
-for (const pkg of selected) {
-	const targets = pkg.targets ?? rustTargets;
-	const source = await Deno.readTextFile(`Casks/${pkg.name}.rb`);
+function readAssets(pkg: ReleasePackage, source: string) {
+	const targets = 'targets' in pkg ? pkg.targets : rustTargets;
 	const pattern = /version "([0-9]+\.[0-9]+\.[0-9]+)"\r?\n\s+sha256 "([a-f0-9]{64})"\r?\n\s+url "([^"]+)"/g;
-	const assets = [...source.matchAll(pattern)].map((match) => {
-		const [, version, digest, template] = match;
-		if (!version || !digest || !template) throw new Error(`Incomplete ${pkg.name} asset declaration`);
-		return { version, digest, url: template.replaceAll('#{version}', version) };
-	});
-	const version = assets[0]?.version;
-	if (!version || assets.length !== targets.length || new Set(assets.map((asset) => asset.version)).size !== 1) {
-		throw new Error(`${pkg.name}: all four architectures must declare the same version and a checksum`);
-	}
-	const expected = new Set(
-		targets.map((target) => {
-			const filename = pkg.assetTemplate.replace('{version}', version).replace('{target}', target);
-			return `https://github.com/kjanat/${pkg.repository}/releases/download/${pkg.tagPrefix}${version}/${filename}`;
-		}),
-	);
-	for (const { url } of assets) {
-		if (!expected.delete(url)) throw new Error(`Unexpected or duplicate ${pkg.name} asset: ${url}`);
-	}
-	await Promise.all(assets.map(async ({ url, digest }) => {
-		const response = await fetch(url);
-		if (!response.ok) throw new Error(`Download failed (${response.status}): ${url}`);
-		const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', await response.arrayBuffer()));
-		const actual = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-		if (actual !== digest) throw new Error(`SHA-256 mismatch: ${url}`);
-		console.log(`Verified ${url.split('/').at(-1)}`);
+	const assets = Array.from(source.matchAll(pattern), ([, version, digest, template]) => ({
+		version,
+		digest,
+		url: template.replaceAll('#{version}', version),
 	}));
-	if (pkg.name === 'envctl') {
-		for (
-			const [localPath, sourcePath] of [
-				['manpages/envctl/envctl.1', 'man/envctl.1'],
-				['manpages/envctl/LICENSE', 'LICENSE'],
-			]
-		) {
-			const response = await fetch(`https://raw.githubusercontent.com/kjanat/envctl/v${version}/${sourcePath}`);
-			if (!response.ok) throw new Error(`Cannot fetch envctl ${version} ${sourcePath}: ${response.status}`);
-			const expected = (await response.text()).replaceAll('\r\n', '\n');
-			const actual = (await Deno.readTextFile(localPath)).replaceAll('\r\n', '\n');
-			if (actual !== expected) {
-				throw new Error(`Refresh ${localPath} from envctl v${version} before merging this update`);
-			}
-			console.log(`Verified ${localPath} against envctl v${version}`);
+	const version = assets[0]?.version;
+	if (!version || assets.length !== targets.length || assets.some((asset) => asset.version !== version)) {
+		throw new CLIError(`${pkg.name}: all ${targets.length} targets must declare the same version and a checksum`, {
+			code: 'INVALID_RELEASE',
+			details: { cask: pkg.name, targets, versions: assets.map((asset) => asset.version) },
+		});
+	}
+
+	const tag = pkg.tagPrefix + version;
+	const expected = new Set(targets.map((target) => {
+		const file = pkg.assetTemplate.replace('{version}', version).replace('{target}', target);
+		return `https://github.com/kjanat/${pkg.repository}/releases/download/${tag}/${file}`;
+	}));
+	for (const { url } of assets) {
+		if (!expected.delete(url)) {
+			throw new CLIError(`Unexpected or duplicate ${pkg.name} asset: ${url}`, {
+				code: 'UNEXPECTED_ASSET',
+				details: { cask: pkg.name, tag, url },
+			});
 		}
 	}
+	return { assets, version, tag };
 }
+
+async function download(url: string) {
+	const response = await fetch(url);
+	if (!response.ok) {
+		throw new CLIError(`Download failed (HTTP ${response.status}): ${url}`, {
+			code: 'DOWNLOAD_FAILED',
+			details: { url, status: response.status },
+		});
+	}
+	return response;
+}
+
+async function verifyCask(pkg: ReleasePackage) {
+	const source = await Deno.readTextFile(`Casks/${pkg.name}.rb`);
+	const { assets, version, tag } = readAssets(pkg, source);
+	const verified = await Promise.all(assets.map(async ({ url, digest }) => {
+		const response = await download(url);
+		const actual = new Uint8Array(await crypto.subtle.digest('SHA-256', await response.arrayBuffer())).toHex();
+		if (actual !== digest) {
+			throw new CLIError(`SHA-256 mismatch: ${url}`, {
+				code: 'CHECKSUM_MISMATCH',
+				details: { url, expected: digest, actual },
+			});
+		}
+		return url.slice(url.lastIndexOf('/') + 1);
+	}));
+
+	for (const { local, upstream } of 'vendored' in pkg ? pkg.vendored : []) {
+		const url = `https://raw.githubusercontent.com/kjanat/${pkg.repository}/${tag}/${upstream}`;
+		const response = await download(url);
+		const expected = (await response.text()).replaceAll('\r\n', '\n');
+		const actual = (await Deno.readTextFile(local)).replaceAll('\r\n', '\n');
+		if (actual !== expected) {
+			throw new CLIError(`${local} differs from ${pkg.name} ${tag}`, {
+				code: 'VENDORED_FILE_MISMATCH',
+				suggest: `Refresh ${local} from ${url}`,
+				details: { local, url },
+			});
+		}
+		verified.push(local);
+	}
+	return verified.map((file) => ({ cask: pkg.name, version, file }));
+}
+
+const [first, ...rest] = packages;
+const names = [first.name, ...rest.map((pkg) => pkg.name)] as const;
+const byName = new Map(packages.map((pkg) => [pkg.name, pkg] as const));
+const check = command('check-release-casks')
+	.description('Verify release checksums and vendored files for Homebrew casks')
+	.arg(
+		'casks',
+		arg.enum(names).variadic().env('CASK', { empty: 'missing' }).unique().default([...names]).describe(
+			'Casks to verify (comma-separated in CASK)',
+		),
+	)
+	.action(async ({ args, out }) => {
+		if (args.casks.length === 0) {
+			throw new CLIError('Select at least one cask', {
+				code: 'EMPTY_CASK_SELECTION',
+				exitCode: 2,
+				suggest: 'Unset CASK to check all casks, or supply a comma-separated list of names.',
+			});
+		}
+		const rows = [];
+		for (const name of args.casks) {
+			const spinner = out.spinner(`Checking ${name}`);
+			const files = await spinner.wrap(verifyCask(byName.get(name)!), {
+				succeed: `Verified ${name}`,
+				fail: `Failed to verify ${name}`,
+			});
+			rows.push(...files);
+		}
+		if (out.jsonMode || out.verbosity !== 'quiet') {
+			out.table(rows, [
+				{ key: 'cask', header: 'Cask' },
+				{ key: 'version', header: 'Version' },
+				{ key: 'file', header: 'Verified file' },
+			]);
+		}
+	});
+
+await cli('check-release-casks').default(check).run();

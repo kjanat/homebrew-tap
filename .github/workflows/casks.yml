@@ -46,6 +46,7 @@ jobs:
     name: Plan cask checks
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     outputs:
       install: ${{ steps.plan.outputs.install }}
       integrity: ${{ steps.plan.outputs.integrity }}
@@ -70,14 +71,14 @@ jobs:
         with: { deno-version: v2.x }
       - name: Verify ShellCheck release checksums and completion versions
         if: matrix.cask == 'shellcheck'
-        run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
+        run: deno run -A .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         if: matrix.cask == 'shellcheck'
         run: python3 completions/shellcheck/tests/test_bash.py
       - name: Verify tool release assets and bundled manuals
         if: matrix.cask != 'shellcheck'
         env: { CASK: "${{ matrix.cask }}" }
-        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts "$CASK"
+        run: deno run --minimum-dependency-age=0 --allow-env=CASK --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
     needs: plan
