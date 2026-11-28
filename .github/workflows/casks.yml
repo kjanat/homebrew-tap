@@ -78,7 +78,7 @@ jobs:
         if: matrix.cask != 'shellcheck'
         env: { CASK: "${{ matrix.cask }}" }
         run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts "$CASK"
-  macos:
+  install:
     name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
     needs: plan
     if: fromJSON(needs.plan.outputs.install).include[0] != null
@@ -94,12 +94,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with: { persist-credentials: false }
+      - name: Put Linux Homebrew on PATH
+        if: runner.os == 'Linux'
+        run: echo '/home/linuxbrew/.linuxbrew/bin' >> "$GITHUB_PATH"
       - name: Update Homebrew and register the checked-out tap
         run: |
           HOMEBREW_DISABLE_LOAD_FORMULA=1 brew update
           brew --version
-          sw_vers
-          uname -m
+          uname -sm
           brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
       - name: Trust the cask under test

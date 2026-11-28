@@ -1,10 +1,9 @@
 import json
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
-
-RUNNERS = ("macos-26", "macos-26-intel")
+MACOS_RUNNERS = ("macos-26", "macos-26-intel")
 RELEASE_CHECKS = {"envctl", "fsql", "rshellcheck", "runner", "svg"}
 SHARED_FILES = {
     ".github/scripts/check-cask-install.sh",
@@ -51,14 +50,16 @@ def make_plan(casks, paths):
         if ".github/scripts/check-release-casks.ts" in paths:
             integrity |= casks & RELEASE_CHECKS
 
+    install = [
+        {"cask": cask, "runner": runner}
+        for cask in sorted(selected)
+        for runner in MACOS_RUNNERS
+    ]
+    if "rshellcheck" in selected:
+        install.append({"cask": "rshellcheck", "runner": "ubuntu-26.04"})
+
     return {
-        "install": {
-            "include": [
-                {"cask": cask, "runner": runner}
-                for cask in sorted(selected)
-                for runner in RUNNERS
-            ]
-        },
+        "install": {"include": install},
         "integrity": {"include": [{"cask": cask} for cask in sorted(integrity)]},
     }
 

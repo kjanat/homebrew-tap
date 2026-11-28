@@ -18,7 +18,9 @@ ruby -c "Casks/$cask.rb"
 brew style "Casks/$cask.rb"
 ```
 
-The [Cask checks workflow](.github/workflows/casks.yml) selects affected casks and runs release integrity and macOS install checks. It is also available as a manual run for the full tap.
+The [Cask checks workflow](.github/workflows/casks.yml) lints the tap before scheduling release integrity and install checks for affected casks. Install checks run on macOS and also on Linux for rshellcheck. A manual run exercises the full tap.
+
+When a cask renames or drops an installed path, test an upgrade from the previous release and check that Homebrew removes the old path. CI exercises install, reinstall, and uninstall at the proposed version.
 
 ## Open a pull request
 
