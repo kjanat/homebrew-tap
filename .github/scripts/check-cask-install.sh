@@ -9,32 +9,32 @@ cask_version() {
 	brew info --cask --json=v2 "kjanat/tap/$1" | ruby -rjson -e 'puts JSON.parse(STDIN.read).fetch("casks").first.fetch("version")'
 }
 
-add_completion_paths() {
-	local command=$1
-	artifacts+=(
-		"etc/bash_completion.d/${command}"
-		"share/zsh/site-functions/_${command}"
-		"share/fish/vendor_completions.d/${command}.fish"
-	)
+completion_path() {
+	local command=$1 shell=$2
+	case ${shell} in
+		bash) printf 'etc/bash_completion.d/%s\n' "${command}" ;;
+		zsh) printf 'share/zsh/site-functions/_%s\n' "${command}" ;;
+		fish) printf 'share/fish/vendor_completions.d/%s.fish\n' "${command}" ;;
+		pwsh | powershell) printf 'share/pwsh/completions/_%s.ps1\n' "${command}" ;;
+		*) return 1 ;;
+	esac
 }
 
 check_generated_completions() {
-	local command=$1 generator=$2 powershell=$3 first_artifact=$4
-	local executable shell expected
-	local index=${first_artifact}
+	local command=$1 generator=$2
+	shift 2
+	local executable shell path
 	# Some generators embed the executable path in the generated script.
 	executable=$(ruby -e 'puts File.realpath(ARGV.fetch(0))' "${prefix}/bin/${command}")
-	for shell in bash zsh fish "${powershell}"; do
-		expected="${RUNNER_TEMP}/${command}-${shell}"
-		"${executable}" "${generator}" "${shell}" >"${expected}"
-		cmp "${expected}" "${prefix}/${artifacts[index]}"
-		index=$((index + 1))
+	for shell in "$@"; do
+		path=$(completion_path "${command}" "${shell}")
+		"${executable}" "${generator}" "${shell}" | cmp - "${prefix}/${path}"
 	done
 }
 
 check_install() {
-	local cask=$1
-	local version=$2
+	local cask=$1 version=$2 generator=$3
+	shift 3
 	for binary in "${binaries[@]}"; do
 		"${prefix}/bin/${binary}" --version | tee "${RUNNER_TEMP}/${binary}-version.txt"
 		grep -F "${version}" "${RUNNER_TEMP}/${binary}-version.txt"
@@ -43,8 +43,8 @@ check_install() {
 		test -s "${prefix}/${path}"
 	done
 
-	if [[ -n ${completion_generator} ]]; then
-		check_generated_completions "${cask}" "${completion_generator}" "${completion_powershell}" "${first_completion_artifact}"
+	if [[ -n ${generator} ]]; then
+		check_generated_completions "${cask}" "${generator}" "$@"
 	fi
 
 	if [[ ${cask} == shellcheck ]]; then
@@ -77,6 +77,31 @@ check_install() {
 		"${prefix}/bin/svg-format" --check "${RUNNER_TEMP}/smoke.svg"
 		"${prefix}/bin/svg-lint" "${RUNNER_TEMP}/smoke.svg"
 	elif [[ ${cask} == rshellcheck ]]; then
+		bash -s -- "${prefix}/etc/bash_completion.d/rshellcheck" <<-'BASH'
+			source "$1" || exit 1
+			registration=$(complete -p rshellcheck) || exit 1
+			[[ ${registration} =~ " -F "([^[:space:]]+) ]] || exit 1
+			completer=${BASH_REMATCH[1]}
+			COMP_WORDS=(rshellcheck --sev)
+			COMP_CWORD=1
+			"${completer}" rshellcheck --sev rshellcheck
+			[[ " ${COMPREPLY[*]} " == *" --severity "* ]]
+		BASH
+		cat >"${RUNNER_TEMP}/test-rshellcheck.ps1" <<-'POWERSHELL'
+			param($CompletionFile)
+			$ErrorActionPreference = "Stop"
+			. $CompletionFile
+			$line = "rshellcheck --sev"
+			$result = [System.Management.Automation.CommandCompletion]::CompleteInput($line, $line.Length, $null)
+			if ($result.CompletionMatches.CompletionText -notcontains "--severity") { throw "Missing --severity completion" }
+		POWERSHELL
+		pwsh -NoProfile -NonInteractive -File "${RUNNER_TEMP}/test-rshellcheck.ps1" "${prefix}/share/pwsh/completions/_rshellcheck.ps1"
+		if command -v zsh >/dev/null; then
+			zsh -n "${prefix}/share/zsh/site-functions/_rshellcheck"
+		fi
+		if command -v fish >/dev/null; then
+			fish -n "${prefix}/share/fish/vendor_completions.d/rshellcheck.fish"
+		fi
 		"${prefix}/bin/rshellcheck" --norc - <<-'SH'
 			#!/bin/sh
 			echo "${HOME}"
@@ -160,46 +185,49 @@ for cask in "$@"; do
 	for binary in "${binaries[@]}"; do
 		artifacts+=("bin/${binary}")
 	done
-	completion_powershell=pwsh
+	completion_generator=
+	commands=("${cask}")
+	shells=(bash zsh fish)
 	case ${cask} in
-		actionlint) completion_generator=-completion ;;
-		runner | envctl) completion_generator=completions ;;
-		rshellcheck)
-			completion_generator=--generate-completions
-			completion_powershell=powershell
+		actionlint)
+			completion_generator=-completion
+			artifacts+=("share/man/man1/actionlint.1")
+			shells+=(pwsh)
 			;;
-		*) completion_generator= ;;
-	esac
-	if [[ -n ${completion_generator} ]]; then
-		first_completion_artifact=${#artifacts[@]}
-		add_completion_paths "${cask}"
-		artifacts+=("share/pwsh/completions/_${cask}.ps1")
-	fi
-
-	case ${cask} in
-		actionlint) artifacts+=("share/man/man1/actionlint.1") ;;
-		shellcheck)
-			add_completion_paths "${cask}"
-			artifacts+=("share/powershell/completions/shellcheck.ps1")
-			;;
-		envctl)
-			artifacts+=("share/man/man1/envctl.1" "share/powershell/Modules/envctl/envctl.psm1")
-			;;
-		svg)
-			if ruby -e 'exit Gem::Version.new(ARGV.fetch(0)) > Gem::Version.new("0.5.2") ? 0 : 1' "${version}"; then
-				for binary in "${binaries[@]}"; do
-					add_completion_paths "${binary}"
-				done
-				artifacts+=("share/pwsh/completions/_svg.ps1")
+		runner | envctl)
+			completion_generator=completions
+			shells+=(pwsh)
+			if [[ ${cask} == envctl ]]; then
+				artifacts+=("share/man/man1/envctl.1" "share/powershell/Modules/envctl/envctl.psm1")
 			fi
 			;;
-		*) ;;
+		rshellcheck)
+			completion_generator=--generate-completions
+			shells+=(powershell)
+			;;
+		shellcheck) artifacts+=("share/powershell/completions/shellcheck.ps1") ;;
+		svg)
+			commands=("${binaries[@]}")
+			if ruby -e 'exit Gem::Version.new(ARGV.fetch(0)) > Gem::Version.new("0.5.2") ? 0 : 1' "${version}"; then
+				artifacts+=("share/pwsh/completions/_svg.ps1")
+			else
+				shells=()
+			fi
+			;;
+		*) shells=() ;;
 	esac
+	for command in "${commands[@]}"; do
+		# Bash 3.2 treats an empty array as unset under nounset.
+		for shell in ${shells[@]+"${shells[@]}"}; do
+			path=$(completion_path "${command}" "${shell}")
+			artifacts+=("${path}")
+		done
+	done
 
 	brew install --cask "kjanat/tap/${cask}"
-	check_install "${cask}" "${version}"
+	check_install "${cask}" "${version}" "${completion_generator}" ${shells[@]+"${shells[@]}"}
 	brew reinstall --cask "kjanat/tap/${cask}"
-	check_install "${cask}" "${version}"
+	check_install "${cask}" "${version}" "${completion_generator}" ${shells[@]+"${shells[@]}"}
 	brew uninstall --cask "kjanat/tap/${cask}"
 	for path in "${artifacts[@]}"; do
 		test ! -e "${prefix}/${path}"
