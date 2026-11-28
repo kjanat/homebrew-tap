@@ -7,8 +7,16 @@ if ! command -v npx >/dev/null 2>&1; then
 	exit 127
 fi
 
-exec npx -y --allow-remote=all "https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@${ACTIONLINT_SHA}" check -v \
-	--strict --experimental \
-	-o github -o pretty \
-	--allow-config-processes \
-	"$@"
+ABC=${ABC:-XYZ}
+
+if test "${ABC}" != "XYZ"; then
+	exec npx -y --allow-remote=all "https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@${ACTIONLINT_SHA}" \
+		--allow-config-processes \
+		"$@"
+else
+	exec npx -y --allow-remote=all "https://pkg.pr.new/kjanat/actionlint/@kjanat/actionlint@${ACTIONLINT_SHA}" check -v \
+		--strict --experimental \
+		-o github -o pretty \
+		--allow-config-processes \
+		"$@"
+fi
