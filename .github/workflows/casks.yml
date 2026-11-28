@@ -55,7 +55,7 @@ jobs:
       - name: Verify tool release assets and bundled manuals
         if: matrix.cask != 'shellcheck'
         env: { CASK: "${{ matrix.cask }}" }
-        run: deno run --allow-env=CASK --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
+        run: deno run --minimum-dependency-age=0 --allow-env=CASK --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts
   macos:
     name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
     needs: plan
