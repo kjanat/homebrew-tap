@@ -121,7 +121,7 @@ jobs:
       - name: Build Bash for envctl completion checks
         if: matrix.cask == 'envctl' && steps.bash-cache.outputs.cache-hit != 'true'
         env: { url: https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz }
-        working-dir: ${{ runner.temp }}
+        working-directory: ${{ runner.temp }}
         run: |
           file=$(basename "${url}")
           curl --retry 3 -fsSLo "${file}" "${url}"
