@@ -3,25 +3,25 @@
 cask "svg" do
   on_macos do
     on_arm do
-      version "0.5.2"
-      sha256 "0d6ad43cd282744782ebb081510efbcadc8e988cf892ed4fdd7d099202b7ae71"
+      version "0.6.0"
+      sha256 "c6bd7aa2a49a09f246b7781c89b800eb79bfb18628531c579605fac40997138b"
       url "https://github.com/kjanat/svg/releases/download/v#{version}/svg-v#{version}-aarch64-apple-darwin.tar.gz"
     end
     on_intel do
-      version "0.5.2"
-      sha256 "2cc69d11a7e567336218a1db3f1dd3bf333ec2f04a68ab708d2090d4d65e42f0"
+      version "0.6.0"
+      sha256 "1f70c757ee8291358af13907ab72b85ab57a493a8aac54084bc81c0f9e203e7f"
       url "https://github.com/kjanat/svg/releases/download/v#{version}/svg-v#{version}-x86_64-apple-darwin.tar.gz"
     end
   end
   on_linux do
     on_arm do
-      version "0.5.2"
-      sha256 "7b97a8c93febb761c3ca19ac256b92ddba3dad84e953ed5fba3e8bef707282c4"
+      version "0.6.0"
+      sha256 "dab6c047d869d9f706a581bf22752b08fd4bee285d5f843eef4d51687d8d7bd4"
       url "https://github.com/kjanat/svg/releases/download/v#{version}/svg-v#{version}-aarch64-unknown-linux-musl.tar.gz"
     end
     on_intel do
-      version "0.5.2"
-      sha256 "da485af52ec4b81f29ac59746255c60c9196e8db0c509c1d3ded36b6fce5f160"
+      version "0.6.0"
+      sha256 "eba17a181e27a2dfb09f332bd661cf3fcbc390f80914c0c58cc1c2d07693fc6f"
       url "https://github.com/kjanat/svg/releases/download/v#{version}/svg-v#{version}-x86_64-unknown-linux-musl.tar.gz"
     end
   end
