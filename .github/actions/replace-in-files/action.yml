@@ -22,7 +22,7 @@ runs:
         INPUT_FILES: ${{ inputs.files }}
         INPUT_SEARCH: ${{ inputs.search }}
         INPUT_REPLACE: ${{ inputs.replace }}
-      run: |
+      run: | # actionlint:ignore script-interpolation -- Import the shared module from the workflow commit
         import { input, parseFileList, replaceAll, setOutput, type Replacement } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
 
         const files = parseFileList(input('files', { required: true }));

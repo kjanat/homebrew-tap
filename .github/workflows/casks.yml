@@ -46,6 +46,7 @@ jobs:
     name: Plan cask checks
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     outputs:
       install: ${{ steps.plan.outputs.install }}
       integrity: ${{ steps.plan.outputs.integrity }}
@@ -70,14 +71,15 @@ jobs:
         with: { deno-version: v2.x }
       - name: Verify ShellCheck release checksums and completion versions
         if: matrix.cask == 'shellcheck'
-        run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
+        run: deno run -A .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         if: matrix.cask == 'shellcheck'
         run: python3 completions/shellcheck/tests/test_bash.py
       - name: Verify tool release assets and bundled manuals
         if: matrix.cask != 'shellcheck'
         env: { CASK: "${{ matrix.cask }}" }
-        run: deno run --allow-read=Casks,manpages --allow-net .github/scripts/check-release-casks.ts "$CASK"
+        run: deno run --minimum-dependency-age=0 -A
+          .github/scripts/check-release-casks.ts
   install:
     name: Cask install (${{ matrix.cask }}, ${{ matrix.runner }})
     needs: plan
@@ -100,16 +102,15 @@ jobs:
       - name: Update Homebrew and register the checked-out tap
         run: |
           HOMEBREW_DISABLE_LOAD_FORMULA=1 brew update
-          brew --version
-          uname -sm
-          brew tap --custom-remote kjanat/tap "$GITHUB_WORKSPACE"
+          brew --version; uname -sm;
+          brew tap --custom-remote kjanat/tap "${GITHUB_WORKSPACE}"
           test "$(git -C "$(brew --repository kjanat/tap)" rev-parse HEAD)" = "$(git rev-parse HEAD)"
       - name: Trust the cask under test
         env: { CASK: "${{ matrix.cask }}" }
-        run: brew trust --cask "kjanat/tap/$CASK"
+        run: brew trust --cask "kjanat/tap/${CASK}"
       - name: Set the native Bash path
         if: matrix.cask == 'envctl'
-        run: echo "CASK_TEST_BASH=$RUNNER_TEMP/cask-test-bin/bash" >> "$GITHUB_ENV"
+        run: echo "CASK_TEST_BASH=${RUNNER_TEMP}/cask-test-bin/bash" >> "${GITHUB_ENV}"
       - name: Restore cached Bash for envctl completion checks
         if: matrix.cask == 'envctl'
         id: bash-cache
@@ -119,17 +120,18 @@ jobs:
           key: cask-test-bash-v1-${{ matrix.runner }}-${{ runner.arch }}-${{ env.BASH_SOURCE_SHA256 }}
       - name: Build Bash for envctl completion checks
         if: matrix.cask == 'envctl' && steps.bash-cache.outputs.cache-hit != 'true'
+        env: { url: https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz }
+        working-dir: ${{ runner.temp }}
         run: |
-          cd "$RUNNER_TEMP"
-          curl --fail --silent --show-error --location --retry 3 \
-            https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz --output bash-5.3.tar.gz
-          printf '%s  %s\n' "$BASH_SOURCE_SHA256" bash-5.3.tar.gz | shasum -a 256 --check -
-          tar -xzf bash-5.3.tar.gz
+          file=$(basename "${url}")
+          curl --retry 3 -fsSLo "${file}" "${url}"
+          printf '%s  %s\n' "${BASH_SOURCE_SHA256}" "${file}" | shasum -a 256 --check -
+          tar -xzf "${file}"
           cd bash-5.3
           ./configure --disable-nls --without-installed-readline
           make -j"$(sysctl -n hw.ncpu)" bash
-          mkdir -p "$(dirname "$CASK_TEST_BASH")"
-          install -m 755 bash "$CASK_TEST_BASH"
+          mkdir -p "$(dirname "${CASK_TEST_BASH}")"
+          install -m 755 bash "${CASK_TEST_BASH}"
       - name: Verify native Bash
         if: matrix.cask == 'envctl'
         run: '"$CASK_TEST_BASH" --version'

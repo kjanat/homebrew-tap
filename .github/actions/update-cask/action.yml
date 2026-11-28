@@ -22,7 +22,7 @@ runs:
         INPUT_CASK: ${{ inputs.cask }}
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_ASSETS: ${{ inputs.assets }}
-      run: |
+      run: | # actionlint:ignore script-interpolation -- Import the shared module from the workflow commit
         import { input, parseDigests, setOutput, updateCask } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
 
         const path = input('cask', { required: true });

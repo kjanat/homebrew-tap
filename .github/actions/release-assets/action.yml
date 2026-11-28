@@ -28,7 +28,7 @@ runs:
         INPUT_REPO: ${{ inputs.repo }}
         INPUT_TAG: ${{ inputs.tag }}
         INPUT_FILTER: ${{ inputs.filter }}
-      run: |
+      run: | # actionlint:ignore script-interpolation -- Import the shared module from the workflow commit
         import { input, selectAssets, setOutput, viewRelease } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
 
         const release = await viewRelease(input('repo', { required: true }), input('tag'));

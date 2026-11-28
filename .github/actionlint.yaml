@@ -1,0 +1,180 @@
+# yaml-language-server: $schema=https://cdn.jsdelivr.net/gh/kjanat/actionlint@012540dc/actionlint.schema.json
+# Use an exact release such as @2.0.0 to pin the schema, or @2 to follow v2.
+# Lint rules: recommended checks are enabled without a configuration file.
+# Use all for all stable rules, or none to select rules individually.
+---
+plugins:
+  - github.com/kjanat/actionlint-plugin-shellcheck@v0.3.1
+  - github.com/kjanat/actionlint-plugin-ruff@v0.4.0
+# network:
+#   metadata-mirrors:
+#     services: [jsdelivr] # Use [] to disable third-party metadata mirrors.
+#     allow-unknown-repositories: false
+lint:
+  enabled: true
+  experimental: true # Enable nursery rules.
+  rules:
+    preset: all
+    disable:
+      - case-insensitive-conditions
+      - forbidden-suppression
+      - unpinned-reference
+    # Each group accepts a level or individual rules. Named levels: default, off, on, info, warn, error.
+    # Errors cause exit status 1. With --strict, warnings do too.
+    # List rules and their defaults with: actionlint rules
+    # Rule defaults in this build:
+    # conventions:
+    #   forbidden-suppression: 'off'
+    #   job-timeout: 'off'
+    #   missing-action-metadata: 'off'
+    # correctness:
+    #   action-branding: 'on'
+    #   action-input-deprecation: 'on'
+    #   action-metadata-read: 'on'
+    #   action-runtime: 'on'
+    #   cache-operation: 'on'
+    #   container-runner: 'on'
+    #   context-availability: 'on'
+    #   deprecated-commands: 'on'
+    #   deprecated-input: 'on'
+    #   empty-job: 'on'
+    #   env-var: 'on'
+    #   event-payload: 'on'
+    #   events: 'on'
+    #   executable-bit: 'on'
+    #   expression: 'on'
+    #   expression-call: 'on'
+    #   expression-reference: 'on'
+    #   expression-syntax: 'on'
+    #   expression-type: 'on'
+    #   glob: 'on'
+    #   id: 'on'
+    #   if-cond: 'on'
+    #   inline-suppression: 'on'
+    #   invalid-action-reference: 'on'
+    #   invalid-dockerfile: 'on'
+    #   invalid-output-file: error
+    #   job-needs: 'on'
+    #   matrix: 'on'
+    #   missing-file: 'on'
+    #   missing-local-action: 'on'
+    #   numeric-values: 'on'
+    #   parallel-steps: 'on'
+    #   permissions: 'on'
+    #   required-input: 'on'
+    #   ruff: 'on'
+    #   runner-label: 'on'
+    #   runner-support: warn
+    #   runtime-lifecycle: warn
+    #   script-interpolation: 'on'
+    #   shell-name: 'on'
+    #   shellcheck: 'on'
+    #   syntax-check: 'on'
+    #   unknown-input: 'on'
+    #   unsound-ternary: 'on'
+    #   unused-suppression: info
+    #   vendor-lock-in: 'on'
+    #   workflow-call: 'on'
+    #   workflow-run-names: 'on'
+    # security:
+    #   cache-call-unrestricted: 'on'
+    #   cache-write-untrusted: 'on'
+    #   credentials: 'on'
+    #   missing-permissions: error
+    #   script-injection: 'on'
+    #   unpinned-reference: 'off'
+    # suspicious:
+    #   case-insensitive-conditions: 'off'
+    #   coercion: 'off'
+    #   collection-comparison: error
+    #   duplicate-workflow-name: warn
+    #   empty-run: 'on'
+    #   empty-triggers: 'on'
+    #   errexit-status: 'off'
+    #   join-literal: 'off'
+    #   mixed-type-comparisons: 'off'
+    #   mixed-type-matrix-filters: 'off'
+    #   string-conditions: 'off'
+    #   uncancellable-condition: 'off'
+    #   workflow-command-syntax: 'off'
+    # Use actionlint rules to find each plugin rule's category.
+    # Enable nursery rules individually under their categories.
+    # disable: []
+
+# Plugins check scripts without executing them. Configure a native backend explicitly when needed.
+# This example selects F, B and S rules and targets Python 3.14.
+tools:
+  ruff:
+    enabled: false
+  shellcheck:
+    enabled: true
+    backend:
+      process:
+        executable: rshellcheck
+        args: ["-x", "-o", "all"]
+    # config also accepts an rc path, auto for discovery, or false to skip rc files.
+    config:
+      # disable: [SC2086]
+      enable: all # [check-unassigned-uppercase]
+      extended-analysis: true
+      # source-path: ["${{ github.workspace }}"]
+      # external-sources: true
+
+# Set CLI reporting defaults. Command-line flags and environment variables take precedence.
+# output:
+#   formats: [github, pretty]
+#   log-level: info
+#   summary: true
+#   network-stats: false
+#   quiet: false
+
+# Input selection uses repository-relative globs. Omitted includes selects all
+# workflows and actions; includes: [] selects none. Git ignore rules also apply.
+# files:
+#   includes: ["**/*.{yml,yaml}"]
+#   excludes: ["fixtures/**", "generated/**"]
+
+# Reusable suppressions match a rule and at least one file/job/step/uses selector.
+# All supplied selectors must match. Prefer a documented, narrow exception.
+# ignores:
+#   - rule: shellcheck
+#     file: .github/workflows/legacy.yml
+#     job: build
+#     step: example
+#     reason: Reviewed exception
+#   - rule: missing-local-action
+#     uses: ./generated-action
+#     reason: Created by an earlier workflow step
+
+# Apply lint/tool settings to matching files. Later matching overrides win.
+overrides:
+  - includes:
+      - .github/actions/commit-and-pr/action.yml
+      - .github/actions/release-assets/action.yml
+      - .github/actions/replace-in-files/action.yml
+      - .github/actions/update-cask/action.yml
+    lint:
+      rules:
+        conventions:
+          forbidden-suppression: off
+
+# Shared local configs resolve relative to this file, in the order listed.
+# Mappings merge recursively; lists/scalars replace; null resets a setting.
+# extends: [../config/actionlint-base.yml]
+
+# Map generated action locations to checked-in source directories.
+# local-actions:
+#   ./generated-action: ./src/action
+
+# Repository facts are independent of rule selection. Omission inherits host
+# knowledge; null makes a fact unknown. Empty collections are known empty sets.
+# repository:
+#   runners: [linux.2xlarge]
+#   variables: {DEFAULT_RUNNER: null, PROVENANCE: "true"}
+#   secrets: [DEPLOY_TOKEN]
+#   default-workflow-permissions: read
+#   environments:
+#     production: {variables: {STAGE: "production"}, secrets: [DEPLOY_TOKEN]}
+# Built-in and workflow_call secrets are added separately.
+
+# Run `actionlint config migrate` to preview conversion of older configuration.

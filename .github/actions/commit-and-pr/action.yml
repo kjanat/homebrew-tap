@@ -34,7 +34,7 @@ runs:
         GIT_AUTHOR_EMAIL: ${{ inputs.author-email }}
         GIT_COMMITTER_NAME: ${{ inputs.author-name }}
         GIT_COMMITTER_EMAIL: ${{ inputs.author-email }}
-      run: |
+      run: | # actionlint:ignore script-interpolation -- Import the shared module from the workflow commit
         import { ensurePullRequest, hasTrackedChanges, input, remoteBranchExists, run, setOutput } from 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/.github/actions/lib.ts';
 
         const branch = input('branch', { required: true });
