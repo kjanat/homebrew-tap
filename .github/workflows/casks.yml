@@ -48,7 +48,7 @@ jobs:
         run: ruby -c Casks/shellcheck.rb
       - name: Verify ShellCheck release checksums and completion versions
         if: matrix.cask == 'shellcheck'
-        run: deno run --allow-read=Casks,completions --allow-net .github/scripts/check-shellcheck.ts
+        run: deno run -A .github/scripts/check-shellcheck.ts
       - name: Check Bash completion behavior
         if: matrix.cask == 'shellcheck'
         run: python3 completions/shellcheck/tests/test_bash.py
