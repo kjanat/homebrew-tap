@@ -1,4 +1,4 @@
-import { arg, cli, CLIError, command } from 'jsr:@kjanat/dreamcli@^5';
+import { arg, cli, CLIError, command } from 'jsr:@kjanat/dreamcli@^5.7.0';
 
 const packages = [
 	{
@@ -119,11 +119,18 @@ const check = command('check-release-casks')
 	.description('Verify release checksums and vendored files for Homebrew casks')
 	.arg(
 		'casks',
-		arg.enum(names).variadic().env('CASK').unique().default([...names]).describe(
+		arg.enum(names).variadic().env('CASK', { empty: 'missing' }).unique().default([...names]).describe(
 			'Casks to verify (comma-separated in CASK)',
 		),
 	)
 	.action(async ({ args, out }) => {
+		if (args.casks.length === 0) {
+			throw new CLIError('Select at least one cask', {
+				code: 'EMPTY_CASK_SELECTION',
+				exitCode: 2,
+				suggest: 'Unset CASK to check all casks, or supply a comma-separated list of names.',
+			});
+		}
 		const rows = [];
 		for (const name of args.casks) {
 			const spinner = out.spinner(`Checking ${name}`);
